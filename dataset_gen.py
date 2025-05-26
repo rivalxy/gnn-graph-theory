@@ -1,9 +1,10 @@
 import networkx as nx
-from igraph import Graph
+from pynauty import Graph, autgrp
 from sklearn.model_selection import train_test_split
 import random
 import torch
 from torch_geometric.data import Data
+from sympy.combinatorics import Permutation, PermutationGroup
 
 
 MAX_EXAMPLES_NUM = 30
@@ -19,10 +20,13 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     """
 
     graphs = nx.read_graph6(file_path)
-    igraphs = []
+    pynauty_graphs = []
     for g in graphs:
-        igraphs.append([Graph.from_networkx(g), g.number_of_nodes()])
-    return igraphs
+        n = g.number_of_nodes()
+        new_g = Graph(n)
+        new_g.set_adjacency_dict(dict(g.adjacency()))
+        pynauty_graphs.append((new_g, n, g.edges()))
+    return pynauty_graphs
 
 
 def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
@@ -35,27 +39,42 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
 
     dataset = []
 
-    for G, n in graphs:
-        aut_group = G.get_automorphisms_vf2()
-        aut_num = G.count_automorphisms_vf2()
+    for G, n, edge_list in graphs:
+        gens_raw, group_size, _, _, _ = autgrp(G)
 
         # ensure 10-30 examples per graph with 1:1 ratio of positive to negative examples
-        examples_num = int(min(MAX_EXAMPLES_NUM, aut_num))
+        examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
+        gens = [Permutation(g) for g in gens_raw]
+        group = PermutationGroup(gens)
+        
         # positive examples
+        positives = []
+        seen = set()
+        for _ in range(examples_num):
+            perm = group.random().array_form
+            k = random.randint(3, min(6, n))
+            domain = random.sample(range(n), k)
+            mapping = {i: perm[i] for i in domain}
+            key = frozenset(mapping.items())
+            if key in seen:
+                continue
+            seen.add(key)
+            positives.append(mapping)
+            dataset.append(_make_data(edge_list, n, mapping, 1))  
 
         # negative examples
+        ...
         
     return dataset
 
 
-def _make_data(G: Graph, n: int,  mapping: dict[int, int], label: int) -> Data:
+def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: int) -> Data:
     x = torch.zeros((n, 2), dtype=torch.float)
 
     for u, v in mapping.items():
         x[u, 0] = 1.0
         x[v, 1] = 1.0
 
-    edge_list = G.get_edgelist()
     if len(edge_list) > 0:
         edges = []
         for u, v in edge_list:
@@ -77,5 +96,3 @@ if __name__ == "__main__":
     graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
     train_dataset = generate_partial_automorphism_graphs(graphs_train)
     val_dataset = generate_partial_automorphism_graphs(graphs_val)
-    print(len(all_graphs), len(train_dataset), len(val_dataset))
-    
