@@ -52,7 +52,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
         seen = set()
         for _ in range(examples_num):
             perm = group.random().array_form
-            k = random.randint(3, n//2)
+            k = random.randint(3, min(6, n))
             domain = random.sample(range(n), k)
             mapping = {i: perm[i] for i in domain}
             key = frozenset(mapping.items())
@@ -64,7 +64,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
 
         # negative examples
         ...
-
+        
     return dataset
 
 
