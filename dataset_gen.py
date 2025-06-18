@@ -22,7 +22,7 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     graphs = nx.read_graph6(file_path)
     pynauty_graphs = []
     for g in graphs:
-        n = g.number_of_nodes()
+        n = int(g.number_of_nodes())
         new_g = Graph(n)
         new_g.set_adjacency_dict(dict(g.adjacency()))
         pynauty_graphs.append((new_g, n, g.edges()))
@@ -46,7 +46,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
         examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
         gens = [Permutation(g) for g in gens_raw]
         group = PermutationGroup(gens)
-        
+
         # positive examples
         positives = []
         seen = set()
@@ -60,11 +60,21 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
                 continue
             seen.add(key)
             positives.append(mapping)
-            dataset.append(_make_data(edge_list, n, mapping, 1))  
+            dataset.append(_make_data(edge_list, n, mapping, 1))
 
         # negative examples
-        ...
-        
+        for mapping in positives:
+            u = random.choice(list(mapping.keys()))
+            v_old = mapping[u]
+            v_new = random.choice([v for v in range(n) if v != v_old])
+            neg_map = mapping.copy()
+            neg_map[u] = v_new
+            key = frozenset(neg_map.items())
+            if key in seen:
+                continue
+            seen.add(key)
+            dataset.append(_make_data(edge_list, n, neg_map, label=0))
+
     return dataset
 
 
@@ -96,3 +106,5 @@ if __name__ == "__main__":
     graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
     train_dataset = generate_partial_automorphism_graphs(graphs_train)
     val_dataset = generate_partial_automorphism_graphs(graphs_val)
+    print(
+        f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")
