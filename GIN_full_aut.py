@@ -14,6 +14,9 @@ graphs_train, graphs_val = train_test_split(raw_graphs, test_size=0.2, random_st
 train_dataset = generate_partial_automorphism_graphs(graphs_train)
 val_dataset   = generate_partial_automorphism_graphs(graphs_val)
 
+train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=128)
+
 class GIN(nn.Module):
     def __init__(self, hidden_dim=64, num_layers=3):
         super().__init__()
@@ -40,8 +43,7 @@ class GIN(nn.Module):
         self.classifier = nn.Linear(hidden_dim, 1)
 
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-        batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+        x, edge_index, batch = data.x, data.edge_index, data.batch
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
         x = global_mean_pool(x, batch)
@@ -50,43 +52,48 @@ class GIN(nn.Module):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model     = GIN().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='max', factor=0.5, patience=3, verbose=True
+)
 
 
 def train_epoch():
     model.train()
     total_loss = 0
     correct, total = 0, 0
-    for data in train_dataset:
+    for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
         out = model(data)
-        loss = criterion(out, data.y)
+        loss = criterion(out, data.y.float())
         loss.backward()
         optimizer.step()
-        total_loss += loss.item()
-        pred = (out > 0).float()
+        total_loss += float(loss) * data.num_graphs
+        pred = (torch.sigmoid(out) > 0.5).float()
         correct += (pred == data.y).sum().item()
-        total += 1
+        total += data.num_graphs
     return total_loss / total, correct / total
 
-def eval_epoch(dataset):
+@torch.no_grad()
+def eval_epoch(loader):
     model.eval()
-    correct, total = 0, 0
-    with torch.no_grad():
-        for data in dataset:
-            data = data.to(device)
-            out = model(data)
-            pred = (out > 0).float()
-            correct += (pred == data.y).sum().item()
-            total += 1
-    return correct / total
+    total_correct = 0
+    total = 0
+    for data in loader:
+        data = data.to(device)
+        out = model(data)                
+        pred = (out > 0).float()        
+        total_correct += (pred == data.y).sum().item()
+        total += data.num_graphs
+    return total_correct / total
 
 
 for epoch in range(1, 101):
     train_loss, train_acc = train_epoch()
-    val_acc = eval_epoch(val_dataset)
+    val_acc = eval_epoch(val_loader)
+    scheduler.step(val_acc)
     print(f"Epoch {epoch:02d} | "
           f"Train Loss: {train_loss:.4f} | "
           f"Train Acc: {train_acc:.4f} | "

@@ -80,10 +80,12 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
 
 def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: int) -> Data:
     x = torch.zeros((n, 2), dtype=torch.float)
+    map_tensor = torch.full((n,), -1, dtype=torch.long)
 
-    for u, v in mapping.items():
-        x[u, 0] = 1.0
-        x[v, 1] = 1.0
+    for i, j in mapping.items():
+        x[i, 0] = 1.0
+        x[j, 1] = 1.0
+        map_tensor[i] = j
 
     if len(edge_list) > 0:
         edges = []
@@ -95,8 +97,7 @@ def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: 
         edge_index = torch.empty((2, 0), dtype=torch.long)
 
     y = torch.tensor([label], dtype=torch.float)
-    data = Data(x=x, edge_index=edge_index, y=y)
-    data.mapping = mapping.copy()
+    data = Data(x=x, edge_index=edge_index, y=y, mapping=map_tensor)
 
     return data
 
