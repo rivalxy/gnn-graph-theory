@@ -2,7 +2,7 @@ import torch
 from torch_geometric.loader import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GINConv, global_mean_pool
+from torch_geometric.nn import GINConv, global_add_pool
 
 from dataset_gen import read_graphs_from_g6, generate_partial_automorphism_graphs
 from sklearn.model_selection import train_test_split
@@ -46,7 +46,7 @@ class GIN(nn.Module):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-        x = global_mean_pool(x, batch)
+        x = global_add_pool(x, batch)
         return self.classifier(x).view(-1)
 
 
