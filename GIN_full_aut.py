@@ -7,6 +7,8 @@ from torch_geometric.nn import GINConv, global_add_pool
 from dataset_gen import read_graphs_from_g6, generate_partial_automorphism_graphs
 from sklearn.model_selection import train_test_split
 
+torch.manual_seed(42)
+
 raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
 
 graphs_train, graphs_val = train_test_split(
@@ -66,7 +68,8 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 def train_epoch():
     model.train()
     total_loss = 0
-    correct, total = 0, 0
+    total_samples = 0
+
     for data in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
@@ -74,11 +77,10 @@ def train_epoch():
         loss = criterion(out, data.y.float())
         loss.backward()
         optimizer.step()
-        total_loss += loss.detach().item() * data.num_graphs
-        pred = (torch.sigmoid(out) > 0.5).float()
-        correct += (pred == data.y).sum().item()
-        total += data.num_graphs
-    return total_loss / total, correct / total
+
+        total_loss += loss.item() * data.num_graphs
+        total_samples += data.num_graphs
+    return total_loss / total_samples
 
 
 @torch.no_grad()
@@ -86,17 +88,20 @@ def eval_epoch(loader):
     model.eval()
     total_correct = 0
     total = 0
+
     for data in loader:
         data = data.to(device)
         out = model(data)
         pred = (out > 0).float()
         total_correct += (pred == data.y).sum().item()
         total += data.num_graphs
+
     return total_correct / total
 
 
 for epoch in range(1, 101):
-    train_loss, train_acc = train_epoch()
+    train_loss = train_epoch()
+    train_acc = eval_epoch(train_loader)
     val_acc = eval_epoch(val_loader)
     scheduler.step(val_acc)
     print(f"Epoch {epoch:02d} | "
