@@ -20,9 +20,10 @@ val_loader = DataLoader(val_dataset, batch_size=128)
 
 
 class GIN(nn.Module):
-    def __init__(self, hidden_dim=128, num_layers=3):
+    def __init__(self, hidden_dim=128, num_layers=5, dropout=0.2):
         super().__init__()
 
+        self.dropout = dropout
         self.convs = nn.ModuleList()
 
         self.convs.append(
@@ -50,13 +51,14 @@ class GIN(nn.Module):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
+            x = F.dropout(x, self.dropout)
         x = global_add_pool(x, batch)
         return self.classifier(x).view(-1)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = GIN().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='max', factor=0.5, patience=3

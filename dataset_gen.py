@@ -61,7 +61,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
                 continue
             seen.add(key)
             positives.append(mapping)
-            dataset.append(_make_data(edge_list, n, mapping, 1))
+            dataset.append(_make_data(edge_list, n, mapping, label=1))
 
         # negative examples
         for mapping in positives:
