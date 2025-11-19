@@ -9,16 +9,18 @@ from sklearn.model_selection import train_test_split
 
 raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
 
-graphs_train, graphs_val = train_test_split(raw_graphs, test_size=0.2, random_state=42)
+graphs_train, graphs_val = train_test_split(
+    raw_graphs, test_size=0.2, random_state=42)
 
 train_dataset = generate_partial_automorphism_graphs(graphs_train)
-val_dataset   = generate_partial_automorphism_graphs(graphs_val)
+val_dataset = generate_partial_automorphism_graphs(graphs_val)
 
 train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=128)
 
+
 class GIN(nn.Module):
-    def __init__(self, hidden_dim=64, num_layers=3):
+    def __init__(self, hidden_dim=128, num_layers=3):
         super().__init__()
 
         self.convs = nn.ModuleList()
@@ -26,6 +28,7 @@ class GIN(nn.Module):
         self.convs.append(
             GINConv(nn.Sequential(
                 nn.Linear(2, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
             ))
@@ -35,6 +38,7 @@ class GIN(nn.Module):
             self.convs.append(
                 GINConv(nn.Sequential(
                     nn.Linear(hidden_dim, hidden_dim),
+                    nn.BatchNorm1d(hidden_dim),
                     nn.ReLU(),
                     nn.Linear(hidden_dim, hidden_dim),
                 ))
@@ -51,11 +55,11 @@ class GIN(nn.Module):
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model     = GIN().to(device)
+model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='max', factor=0.5, patience=3, verbose=True
+    optimizer, mode='max', factor=0.5, patience=3
 )
 
 
@@ -70,11 +74,12 @@ def train_epoch():
         loss = criterion(out, data.y.float())
         loss.backward()
         optimizer.step()
-        total_loss += float(loss) * data.num_graphs
+        total_loss += loss.detach().item() * data.num_graphs
         pred = (torch.sigmoid(out) > 0.5).float()
         correct += (pred == data.y).sum().item()
         total += data.num_graphs
     return total_loss / total, correct / total
+
 
 @torch.no_grad()
 def eval_epoch(loader):
@@ -83,8 +88,8 @@ def eval_epoch(loader):
     total = 0
     for data in loader:
         data = data.to(device)
-        out = model(data)                
-        pred = (out > 0).float()        
+        out = model(data)
+        pred = (out > 0).float()
         total_correct += (pred == data.y).sum().item()
         total += data.num_graphs
     return total_correct / total

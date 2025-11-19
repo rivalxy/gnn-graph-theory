@@ -47,9 +47,10 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
         gens = [Permutation(g) for g in gens_raw]
         group = PermutationGroup(gens)
 
+        seen = set()
+
         # positive examples
         positives = []
-        seen = set()
         for _ in range(examples_num):
             perm = group.random().array_form
             k = random.randint(3, min(6, n))
@@ -104,6 +105,7 @@ def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: 
 
 if __name__ == "__main__":
     all_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
+    print(f"Average number of nodes: {sum(n for _, n, _ in all_graphs) / len(all_graphs)}")
     graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
     train_dataset = generate_partial_automorphism_graphs(graphs_train)
     val_dataset = generate_partial_automorphism_graphs(graphs_val)
