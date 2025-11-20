@@ -59,7 +59,7 @@ class GIN(nn.Module):
         return self.classifier(x).view(-1)
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
@@ -118,8 +118,7 @@ def eval_epoch(loader):
 
 
 if __name__ == "__main__":
-    best_model_stats = []
-    best_val_acc = 0.0
+    best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]  # train_loss, train_acc, train_f1, val_acc, val_f1
 
     for epoch in range(1, 101):
         train_loss = train_epoch()
@@ -127,10 +126,8 @@ if __name__ == "__main__":
         val_acc, val_f1 = eval_epoch(val_loader)
         scheduler.step(val_acc)
         
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        if val_acc > best_model_stats[3]:
             best_model_stats = [train_loss, train_acc, train_f1, val_acc, val_f1]
-            torch.save(model.state_dict(), "best_gin_model.pth")
 
         print(f"Epoch {epoch:02d} | "
               f"Train Loss: {train_loss:.4f} | "
