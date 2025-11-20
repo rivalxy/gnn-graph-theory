@@ -21,7 +21,7 @@ More detailed logs will be appended as experiments continue.
 
 ## Repository Structure
 
-* **/data/** — Graph datasets and generated partial automorphisms.
+* **/dataset/** — Graph datasets and generated partial automorphisms.
 * **/models/** — GNN architectures, training scripts, and saved weights.
 
 ## Thesis Context
