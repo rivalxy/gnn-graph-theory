@@ -2,12 +2,13 @@ import torch
 from torch_geometric.loader import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric import seed_everything
 from torch_geometric.nn import GINConv, global_add_pool
 
 from dataset_gen import read_graphs_from_g6, generate_partial_automorphism_graphs
 from sklearn.model_selection import train_test_split
 
-torch.manual_seed(42)
+seed_everything(42)
 
 raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
 
