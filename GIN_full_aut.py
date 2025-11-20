@@ -117,14 +117,32 @@ def eval_epoch(loader):
     return acc, f1
 
 
-for epoch in range(1, 101):
-    train_loss = train_epoch()
-    train_acc, train_f1 = eval_epoch(train_loader)
-    val_acc, val_f1 = eval_epoch(val_loader)
-    scheduler.step(val_acc)
-    print(f"Epoch {epoch:02d} | "
-          f"Train Loss: {train_loss:.4f} | "
-          f"Train Acc: {train_acc:.4f} | "
-          f"Train F1:  {train_f1:.4f} | "
-          f"Val Acc:   {val_acc:.4f} | "
-          f"Val F1:    {val_f1:.4f}")
+if __name__ == "__main__":
+    best_model_stats = []
+    best_val_acc = 0.0
+
+    for epoch in range(1, 101):
+        train_loss = train_epoch()
+        train_acc, train_f1 = eval_epoch(train_loader)
+        val_acc, val_f1 = eval_epoch(val_loader)
+        scheduler.step(val_acc)
+        
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            best_model_stats = [train_loss, train_acc, train_f1, val_acc, val_f1]
+            torch.save(model.state_dict(), "best_gin_model.pth")
+
+        print(f"Epoch {epoch:02d} | "
+              f"Train Loss: {train_loss:.4f} | "
+              f"Train Acc: {train_acc:.4f} | "
+              f"Train F1:  {train_f1:.4f} | "
+              f"Val Acc:   {val_acc:.4f} | "
+              f"Val F1:    {val_f1:.4f}")
+        
+    print("================================\n")    
+    print("Best Model Stats:")
+    print(f"Train Loss: {best_model_stats[0]:.4f} | "
+          f"Train Acc: {best_model_stats[1]:.4f} | "
+          f"Train F1:  {best_model_stats[2]:.4f} | "
+          f"Val Acc:   {best_model_stats[3]:.4f} | "
+          f"Val F1:    {best_model_stats[4]:.4f}")
