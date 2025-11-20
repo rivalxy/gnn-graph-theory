@@ -2,12 +2,13 @@ import torch
 from torch_geometric.loader import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric import seed_everything
 from torch_geometric.nn import GINConv, global_add_pool
 
 from dataset_gen import read_graphs_from_g6, generate_partial_automorphism_graphs
 from sklearn.model_selection import train_test_split
 
-torch.manual_seed(42)
+seed_everything(42)
 
 raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
 
@@ -90,6 +91,8 @@ def eval_epoch(loader):
     model.eval()
     total_correct = 0
     total = 0
+    all_preds = []
+    all_targets = []
 
     for data in loader:
         data = data.to(device)
@@ -98,15 +101,30 @@ def eval_epoch(loader):
         total_correct += (pred == data.y).sum().item()
         total += data.num_graphs
 
-    return total_correct / total
+        all_preds.append(pred.cpu().view(-1))
+        all_targets.append(data.y.cpu().float().view(-1))
+
+    acc = total_correct / total
+    preds = torch.cat(all_preds)
+    targets = torch.cat(all_targets)
+
+    tp = ((preds == 1) & (targets == 1)).sum().item()
+    fp = ((preds == 1) & (targets == 0)).sum().item()
+    fn = ((preds == 0) & (targets == 1)).sum().item()
+    denom = (2 * tp + fp + fn)
+    f1 = 0.0 if denom == 0 else (2 * tp) / denom
+
+    return acc, f1
 
 
 for epoch in range(1, 101):
     train_loss = train_epoch()
-    train_acc = eval_epoch(train_loader)
-    val_acc = eval_epoch(val_loader)
+    train_acc, train_f1 = eval_epoch(train_loader)
+    val_acc, val_f1 = eval_epoch(val_loader)
     scheduler.step(val_acc)
     print(f"Epoch {epoch:02d} | "
           f"Train Loss: {train_loss:.4f} | "
           f"Train Acc: {train_acc:.4f} | "
-          f"Val Acc:   {val_acc:.4f}")
+          f"Train F1:  {train_f1:.4f} | "
+          f"Val Acc:   {val_acc:.4f} | "
+          f"Val F1:    {val_f1:.4f}")
