@@ -12,7 +12,7 @@ This section stores training and validation metrics tracked during model develop
 
 ### Example Metrics
 
-```
+```text
 Epoch 03 | Train Loss: 0.4675 | Train Acc: 0.7771 | Train F1: 0.7730 | Val Acc: 0.7680 | Val F1: 0.7647
 Epoch 04 | Train Loss: 0.4437 | Train Acc: 0.7842 | Train F1: 0.7948 | Val Acc: 0.7768 | Val F1: ...
 ```
@@ -27,5 +27,3 @@ More detailed logs will be appended as experiments continue.
 ## Thesis Context
 
 The goal is to investigate potential applications of graph neural networks (GNNs) to problems in algebraic graph theory. The student will have the opportunity to engage with the state-of-the-art research in machine learning and algebraic graph theory and contribute to the field by generating new record graphs and training GNNs to predict algebraic properties.
-
-
