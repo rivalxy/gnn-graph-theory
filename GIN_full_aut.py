@@ -54,12 +54,12 @@ class GIN(nn.Module):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            x = F.dropout(x, self.dropout)
+            x = F.dropout(x, self.dropout, training=self.training)
         x = global_add_pool(x, batch)
         return self.classifier(x).view(-1)
 
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("cpu")
 model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
