@@ -54,12 +54,12 @@ class GIN(nn.Module):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            x = F.dropout(x, self.dropout)
+            x = F.dropout(x, self.dropout, training=self.training)
         x = global_add_pool(x, batch)
         return self.classifier(x).view(-1)
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
@@ -117,14 +117,29 @@ def eval_epoch(loader):
     return acc, f1
 
 
-for epoch in range(1, 101):
-    train_loss = train_epoch()
-    train_acc, train_f1 = eval_epoch(train_loader)
-    val_acc, val_f1 = eval_epoch(val_loader)
-    scheduler.step(val_acc)
-    print(f"Epoch {epoch:02d} | "
-          f"Train Loss: {train_loss:.4f} | "
-          f"Train Acc: {train_acc:.4f} | "
-          f"Train F1:  {train_f1:.4f} | "
-          f"Val Acc:   {val_acc:.4f} | "
-          f"Val F1:    {val_f1:.4f}")
+if __name__ == "__main__":
+    best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]  # train_loss, train_acc, train_f1, val_acc, val_f1
+
+    for epoch in range(1, 101):
+        train_loss = train_epoch()
+        train_acc, train_f1 = eval_epoch(train_loader)
+        val_acc, val_f1 = eval_epoch(val_loader)
+        scheduler.step(val_acc)
+        
+        if val_acc > best_model_stats[3]:
+            best_model_stats = [train_loss, train_acc, train_f1, val_acc, val_f1]
+
+        print(f"Epoch {epoch:02d} | "
+              f"Train Loss: {train_loss:.4f} | "
+              f"Train Acc: {train_acc:.4f} | "
+              f"Train F1:  {train_f1:.4f} | "
+              f"Val Acc:   {val_acc:.4f} | "
+              f"Val F1:    {val_f1:.4f}")
+        
+    print("================================\n")    
+    print("Best Model Stats:")
+    print(f"Train Loss: {best_model_stats[0]:.4f} | "
+          f"Train Acc: {best_model_stats[1]:.4f} | "
+          f"Train F1:  {best_model_stats[2]:.4f} | "
+          f"Val Acc:   {best_model_stats[3]:.4f} | "
+          f"Val F1:    {best_model_stats[4]:.4f}")
