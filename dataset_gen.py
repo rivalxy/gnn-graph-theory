@@ -13,10 +13,10 @@ MAX_ATTEMPTS = 100
 
 def read_graphs_from_g6(file_path: str) -> list[Graph]:
     """
-    Reads graphs from a .g6 file and converts them to igraph format.
+    Reads graphs from a .g6 file and converts them to pynauty format.
 
     :param file_path: Path to the .g6 file.
-    :returns: List of igraph graphs.
+    :returns: List of pynauty graphs.
     """
 
     graphs = nx.read_graph6(file_path)
@@ -31,9 +31,9 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
 
 def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
     """
-    Generates partial automorphism graphs from a list of igraph graphs.
+    Generates partial automorphism graphs from a list of pynauty graphs.
 
-    :param graphs: List of igraph graphs.
+    :param graphs: List of pynauty graphs.
     :returns: TODO
     """
 
