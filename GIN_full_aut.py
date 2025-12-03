@@ -31,7 +31,7 @@ class GIN(nn.Module):
 
         self.convs.append(
             GINConv(nn.Sequential(
-                nn.Linear(2, hidden_dim),
+                nn.Linear(3, hidden_dim),
                 nn.BatchNorm1d(hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
@@ -59,7 +59,7 @@ class GIN(nn.Module):
         return self.classifier(x).view(-1)
 
 
-device = torch.device("cpu")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
