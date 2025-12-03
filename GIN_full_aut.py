@@ -31,7 +31,7 @@ class GIN(nn.Module):
 
         self.convs.append(
             GINConv(nn.Sequential(
-                nn.Linear(2, hidden_dim),
+                nn.Linear(3, hidden_dim),
                 nn.BatchNorm1d(hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, hidden_dim),
