@@ -59,7 +59,7 @@ class GIN(nn.Module):
         return self.classifier(x).view(-1)
 
 
-device = torch.device("cpu")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 model = GIN().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 criterion = nn.BCEWithLogitsLoss()
