@@ -16,16 +16,16 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     Reads graphs from a .g6 file and converts them to pynauty format.
 
     :param file_path: Path to the .g6 file.
-    :returns: List of pynauty graphs.
+    :returns: List of pynauty graphs with their number of nodes and edges.
     """
 
     graphs = nx.read_graph6(file_path)
     pynauty_graphs = []
-    for g in graphs:
-        n = int(g.number_of_nodes())
-        new_g = Graph(n)
-        new_g.set_adjacency_dict(dict(g.adjacency()))
-        pynauty_graphs.append((new_g, n, g.edges()))
+    for graph in graphs:
+        num_of_nodes = int(graph.number_of_nodes())
+        pynauty_graph = Graph(num_of_nodes)
+        pynauty_graph.set_adjacency_dict(dict(graph.adjacency()))
+        pynauty_graphs.append((pynauty_graph, num_of_nodes, graph.edges()))
     return pynauty_graphs
 
 
