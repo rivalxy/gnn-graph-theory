@@ -69,7 +69,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
             positives.append(mapping)
             dataset.append(_make_data(edge_list, n, mapping, label=1))
 
-        #FIXME negative examples 
+        #FIXME negative examples
         for mapping in positives:
             u = random.choice(list(mapping.keys()))
             v_old = mapping[u]
@@ -86,13 +86,17 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
 
 
 def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: int) -> Data:
-    x = torch.zeros((n, 2), dtype=torch.float)
-    map_tensor = torch.full((n,), -1, dtype=torch.long)
-
+    # 3 features: node_id, source_id (if mapped), target_id (if mapped)
+    x = torch.full((n, 3), -1.0, dtype=torch.float)
+    
+    # Give EVERY node its own identity
+    for node in range(n):
+        x[node, 0] = float(node) / n  
+    
+    # Mark mapped nodes with bidirectional info
     for i, j in mapping.items():
-        x[i, 0] = 1.0
-        x[j, 1] = 1.0
-        map_tensor[i] = j
+        x[i, 1] = float(j) / n  # target_id
+        x[j, 2] = float(i) / n  # source_id
 
     if len(edge_list) > 0:
         edges = []
@@ -104,14 +108,12 @@ def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: 
         edge_index = torch.empty((2, 0), dtype=torch.long)
 
     y = torch.tensor([label], dtype=torch.float)
-    data = Data(x=x, edge_index=edge_index, y=y, mapping=map_tensor)
-
+    data = Data(x=x, edge_index=edge_index, y=y)
     return data
 
 
 if __name__ == "__main__":
     all_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
-    print(f"Average number of nodes: {sum(n for _, n, _ in all_graphs) / len(all_graphs)}")
     graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
     train_dataset = generate_partial_automorphism_graphs(graphs_train)
     val_dataset = generate_partial_automorphism_graphs(graphs_val)
