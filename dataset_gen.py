@@ -39,13 +39,14 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
 
     dataset = []
 
-    for G, n, edge_list in graphs:
-        gens_raw, group_size, _, _, _ = autgrp(G)
-
+    for Graph, num_of_nodes, edge_list in graphs:
+        generators_raw, grpsize1, grpsize2, _, _ = autgrp(Graph)
+        group_size = grpsize1 * 10**grpsize2
+        
         # ensure 10-30 examples per graph with 1:1 ratio of positive to negative examples
         examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
-        gens = [Permutation(g) for g in gens_raw]
-        group = PermutationGroup(gens)
+        generators = [Permutation(g) for g in generators_raw]
+        group = PermutationGroup(generators)
 
         seen_positives = set()
         seen_negatives = set()
@@ -57,9 +58,9 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
             attempts += 1
             perm = group.random().array_form
 
-            k = random.randint(max(3, n // 3), max(4, 2 * n // 3))
-            k = min(k, n)
-            domain = random.sample(range(n), k)
+            p_aut_size = random.randint(max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
+            p_aut_size = min(p_aut_size, num_of_nodes)
+            domain = random.sample(range(num_of_nodes), p_aut_size)
             mapping = {i: perm[i] for i in domain}
 
             key = frozenset(mapping.items())
@@ -67,36 +68,36 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
                 continue
             seen_positives.add(key)
             positives.append(mapping)
-            dataset.append(_make_data(edge_list, n, mapping, label=1))
+            dataset.append(_make_data(edge_list, num_of_nodes, mapping, label=1))
 
         #FIXME negative examples
         for mapping in positives:
             u = random.choice(list(mapping.keys()))
             v_old = mapping[u]
-            v_new = random.choice([v for v in range(n) if v != v_old])
+            v_new = random.choice([v for v in range(num_of_nodes) if v != v_old])
             neg_map = mapping.copy()
             neg_map[u] = v_new
             key = frozenset(neg_map.items())
             if key in seen_negatives:
                 continue
             seen_negatives.add(key)
-            dataset.append(_make_data(edge_list, n, neg_map, label=0))
+            dataset.append(_make_data(edge_list, num_of_nodes, neg_map, label=0))
 
     return dataset
 
 
-def _make_data(edge_list: list[tuple], n: int,  mapping: dict[int, int], label: int) -> Data:
+def _make_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, int], label: int) -> Data:
     # 3 features: node_id, source_id (if mapped), target_id (if mapped)
-    x = torch.full((n, 3), -1.0, dtype=torch.float)
+    x = torch.full((num_of_nodes, 3), -1.0, dtype=torch.float)
     
     # Give EVERY node its own identity
-    for node in range(n):
-        x[node, 0] = float(node) / n  
+    for node in range(num_of_nodes):
+        x[node, 0] = float(node) / num_of_nodes  
     
     # Mark mapped nodes with bidirectional info
-    for i, j in mapping.items():
-        x[i, 1] = float(j) / n  # target_id
-        x[j, 2] = float(i) / n  # source_id
+    for source, target in mapping.items():
+        x[source, 1] = float(target) / num_of_nodes  # target_id
+        x[target, 2] = float(source) / num_of_nodes  # source_id
 
     if len(edge_list) > 0:
         edges = []
