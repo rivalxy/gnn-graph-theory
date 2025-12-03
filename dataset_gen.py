@@ -34,7 +34,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
     Generates partial automorphism graphs from a list of pynauty graphs.
 
     :param graphs: List of pynauty graphs.
-    :returns: TODO
+    :returns: #TODO
     """
 
     dataset = []
@@ -47,23 +47,29 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
         gens = [Permutation(g) for g in gens_raw]
         group = PermutationGroup(gens)
 
-        seen = set()
+        seen_positives = set()
+        seen_negatives = set()
 
         # positive examples
         positives = []
-        for _ in range(examples_num):
+        attempts = 0
+        while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
+            attempts += 1
             perm = group.random().array_form
-            k = random.randint(3, min(6, n))
+
+            k = random.randint(max(3, n // 3), max(4, 2 * n // 3))
+            k = min(k, n)
             domain = random.sample(range(n), k)
             mapping = {i: perm[i] for i in domain}
+
             key = frozenset(mapping.items())
-            if key in seen:
+            if key in seen_positives:
                 continue
-            seen.add(key)
+            seen_positives.add(key)
             positives.append(mapping)
             dataset.append(_make_data(edge_list, n, mapping, label=1))
 
-        # negative examples
+        #FIXME negative examples 
         for mapping in positives:
             u = random.choice(list(mapping.keys()))
             v_old = mapping[u]
@@ -71,9 +77,9 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
             neg_map = mapping.copy()
             neg_map[u] = v_new
             key = frozenset(neg_map.items())
-            if key in seen:
+            if key in seen_negatives:
                 continue
-            seen.add(key)
+            seen_negatives.add(key)
             dataset.append(_make_data(edge_list, n, neg_map, label=0))
 
     return dataset
