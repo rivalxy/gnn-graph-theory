@@ -5,7 +5,8 @@ import torch.nn.functional as F
 from torch_geometric import seed_everything
 from torch_geometric.nn import GINConv, global_add_pool
 
-from dataset_gen import read_graphs_from_g6, generate_paut_dataset
+from dataset_gen import generate_paut_dataset
+from dataset.utils import read_graphs_from_g6
 from sklearn.model_selection import train_test_split
 
 seed_everything(42)
