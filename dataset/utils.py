@@ -19,11 +19,23 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     return pynauty_graphs
 
 
-def is_paut() -> bool:
+def is_paut(edge_list: list[tuple], mapping: dict[int, int]) -> bool:
     """
     Check if mapping is a partial automorphism on given graph.
     """
-    return False
+    edge_set = set()
+    for u, v in edge_list:
+        edge_set.add((u, v))
+        edge_set.add((v, u))
+    
+    domain = set(mapping.keys())
+    for i, u in enumerate(domain):
+        for v in domain[i+1:]:
+            u_mapped = mapping[u]
+            v_mapped = mapping[v]
+            if ((u, v) in edge_set) != ((u_mapped, v_mapped) in edge_set):
+                return False
+    return True
 
 
 def is_extensible() -> bool:
