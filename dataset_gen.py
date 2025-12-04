@@ -29,12 +29,12 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     return pynauty_graphs
 
 
-def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
+def generate_paut_dataset(graphs: list[Graph]) -> list:
     """
-    Generates partial automorphism graphs from a list of pynauty graphs.
+    Generates partial automorphism mappings with their labels from a list of pynauty graphs.
 
     :param graphs: List of pynauty graphs.
-    :returns: #TODO
+    :returns: # List of PyG Data objects containing partial automorphism mappings and labels.
     """
 
     dataset = []
@@ -42,7 +42,7 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
     for Graph, num_of_nodes, edge_list in graphs:
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(Graph)
         group_size = grpsize1 * 10**grpsize2
-        
+
         # ensure 10-30 examples per graph with 1:1 ratio of positive to negative examples
         examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
         generators = [Permutation(g) for g in generators_raw]
@@ -58,7 +58,8 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
             attempts += 1
             perm = group.random().array_form
 
-            p_aut_size = random.randint(max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
+            p_aut_size = random.randint(
+                max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
             p_aut_size = min(p_aut_size, num_of_nodes)
             domain = random.sample(range(num_of_nodes), p_aut_size)
             mapping = {i: perm[i] for i in domain}
@@ -68,32 +69,35 @@ def generate_partial_automorphism_graphs(graphs: list[Graph]) -> list:
                 continue
             seen_positives.add(key)
             positives.append(mapping)
-            dataset.append(_make_data(edge_list, num_of_nodes, mapping, label=1))
+            dataset.append(_make_pyg_data(
+                edge_list, num_of_nodes, mapping, label=1))
 
-        #FIXME negative examples
+        # FIXME negative examples
         for mapping in positives:
             u = random.choice(list(mapping.keys()))
             v_old = mapping[u]
-            v_new = random.choice([v for v in range(num_of_nodes) if v != v_old])
+            v_new = random.choice(
+                [v for v in range(num_of_nodes) if v != v_old])
             neg_map = mapping.copy()
             neg_map[u] = v_new
             key = frozenset(neg_map.items())
             if key in seen_negatives:
                 continue
             seen_negatives.add(key)
-            dataset.append(_make_data(edge_list, num_of_nodes, neg_map, label=0))
+            dataset.append(_make_pyg_data(
+                edge_list, num_of_nodes, neg_map, label=0))
 
     return dataset
 
 
-def _make_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, int], label: int) -> Data:
+def _make_pyg_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, int], label: int) -> Data:
     # 3 features: node_id, source_id (if mapped), target_id (if mapped)
     x = torch.full((num_of_nodes, 3), -1.0, dtype=torch.float)
-    
+
     # Give EVERY node its own identity
     for node in range(num_of_nodes):
-        x[node, 0] = float(node) / num_of_nodes  
-    
+        x[node, 0] = float(node) / num_of_nodes
+
     # Mark mapped nodes with bidirectional info
     for source, target in mapping.items():
         x[source, 1] = float(target) / num_of_nodes  # target_id
@@ -116,7 +120,7 @@ def _make_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, in
 if __name__ == "__main__":
     all_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
     graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
-    train_dataset = generate_partial_automorphism_graphs(graphs_train)
-    val_dataset = generate_partial_automorphism_graphs(graphs_val)
+    train_dataset = generate_paut_dataset(graphs_train)
+    val_dataset = generate_paut_dataset(graphs_val)
     print(
         f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")

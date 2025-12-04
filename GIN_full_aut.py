@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch_geometric import seed_everything
 from torch_geometric.nn import GINConv, global_add_pool
 
-from dataset_gen import read_graphs_from_g6, generate_partial_automorphism_graphs
+from dataset_gen import read_graphs_from_g6, generate_paut_dataset
 from sklearn.model_selection import train_test_split
 
 seed_everything(42)
@@ -15,8 +15,8 @@ raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
 graphs_train, graphs_val = train_test_split(
     raw_graphs, test_size=0.2, random_state=42)
 
-train_dataset = generate_partial_automorphism_graphs(graphs_train)
-val_dataset = generate_partial_automorphism_graphs(graphs_val)
+train_dataset = generate_paut_dataset(graphs_train)
+val_dataset = generate_paut_dataset(graphs_val)
 
 train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=128)
@@ -118,16 +118,18 @@ def eval_epoch(loader):
 
 
 if __name__ == "__main__":
-    best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]  # train_loss, train_acc, train_f1, val_acc, val_f1
+    # train_loss, train_acc, train_f1, val_acc, val_f1
+    best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]
 
     for epoch in range(1, 101):
         train_loss = train_epoch()
         train_acc, train_f1 = eval_epoch(train_loader)
         val_acc, val_f1 = eval_epoch(val_loader)
         scheduler.step(val_acc)
-        
+
         if val_acc > best_model_stats[3]:
-            best_model_stats = [train_loss, train_acc, train_f1, val_acc, val_f1]
+            best_model_stats = [train_loss,
+                                train_acc, train_f1, val_acc, val_f1]
 
         print(f"Epoch {epoch:02d} | "
               f"Train Loss: {train_loss:.4f} | "
@@ -135,8 +137,8 @@ if __name__ == "__main__":
               f"Train F1:  {train_f1:.4f} | "
               f"Val Acc:   {val_acc:.4f} | "
               f"Val F1:    {val_f1:.4f}")
-        
-    print("================================\n")    
+
+    print("================================\n")
     print("Best Model Stats:")
     print(f"Train Loss: {best_model_stats[0]:.4f} | "
           f"Train Acc: {best_model_stats[1]:.4f} | "
