@@ -31,7 +31,7 @@ def is_paut(edge_list: list[tuple], mapping: dict[int, int]) -> bool:
         edge_set.add((u, v))
         edge_set.add((v, u))
 
-    domain = set(mapping.keys())
+    domain = list(mapping.keys())
     for i, u in enumerate(domain):
         for v in domain[i+1:]:
             u_mapped = mapping[u]
