@@ -1,5 +1,7 @@
 import networkx as nx
 from pynauty import Graph
+from sympy.combinatorics import Permutation, PermutationGroup
+
 
 def read_graphs_from_g6(file_path: str) -> list[Graph]:
     """
@@ -39,8 +41,12 @@ def is_paut(edge_list: list[tuple], mapping: dict[int, int]) -> bool:
     return True
 
 
-def is_extensible() -> bool:
+def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
     """
     Check if mapping can be extended to a full automorphism on given graph.
     """
+    domain = set(mapping.keys())
+    for perm in group.generate():
+        if all(perm.array_form[i] == mapping[i] for i in domain):
+            return True
     return False
