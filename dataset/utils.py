@@ -56,6 +56,8 @@ if __name__ == "__main__":
     test_graph = nx.Graph()
     test_graph.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 4), (2, 4), (4, 5), (5, 6)])
     test_edge_list = list(test_graph.edges())
+    positive_mappings = [{0: 0, 1: 1, 2: 2},
+                         {0: 0, 1: 1, 4: 4}]
     negative_mappings = [{0: 2, 1: 1, 2: 0},
                          {0: 0, 1: 1, 2: 2, 3: 4, 4: 3},
                          ]
@@ -67,6 +69,10 @@ if __name__ == "__main__":
     group_size = grpsize1 * 10**grpsize2
     generators = [Permutation(g) for g in generators_raw]
     group = PermutationGroup(generators)
+
+    for mapping in positive_mappings:
+        assert is_paut(test_edge_list, mapping)
+        assert is_extensible(group, mapping)
     for mapping in negative_mappings:
         assert is_paut(test_edge_list, mapping)
         assert not is_extensible(group, mapping)
