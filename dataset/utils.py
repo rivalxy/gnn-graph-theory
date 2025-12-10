@@ -17,7 +17,8 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
         num_of_nodes = int(graph.number_of_nodes())
         pynauty_graph = Graph(num_of_nodes)
         pynauty_graph.set_adjacency_dict(dict(graph.adjacency()))
-        pynauty_graphs.append((pynauty_graph, num_of_nodes, graph.edges()))
+        pynauty_graphs.append(
+            (pynauty_graph, graph, num_of_nodes, graph.edges()))
     return pynauty_graphs
 
 

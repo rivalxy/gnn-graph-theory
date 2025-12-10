@@ -90,7 +90,7 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
     Generates partial automorphism mappings with their labels from a list of pynauty graphs.
 
     :param graphs: List of pynauty graphs.
-    :returns: # List of PyG Data objects containing partial automorphism mappings and labels.
+    :returns: List of PyG Data objects containing partial automorphism mappings and labels.
     """
 
     positive_pyg_data = []
