@@ -5,7 +5,7 @@ import torch
 from torch_geometric.data import Data
 from sympy.combinatorics import Permutation, PermutationGroup
 
-from dataset.utils import *
+from dataset.utils import is_paut, is_extensible, read_graphs_from_g6
 
 
 MAX_EXAMPLES_NUM = 10
@@ -26,7 +26,6 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
 
         p_aut_size = random.randint(
             max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
-        p_aut_size = min(p_aut_size, num_of_nodes)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -94,7 +93,8 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
     :returns: # List of PyG Data objects containing partial automorphism mappings and labels.
     """
 
-    dataset = []
+    positive_pyg_data = []
+    negative_pyg_data = []
 
     for Graph, num_of_nodes, edge_list in graphs:
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(Graph)
@@ -108,18 +108,19 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
         positives = gen_positive_examples(
             group, num_of_nodes, examples_num)
         for mapping in positives:
-            assert is_paut(edge_list, mapping) and is_extensible(
-                group, mapping)
-            dataset.append(make_pyg_data(
+            assert is_paut(edge_list, mapping)
+            assert is_extensible(group, mapping)
+            positive_pyg_data.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=1))
 
         negatives = gen_negative_examples(positives, num_of_nodes)
         for mapping in negatives:
             assert is_paut(edge_list, mapping)
             assert not is_extensible(group, mapping)
-            dataset.append(make_pyg_data(
+            negative_pyg_data.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=0))
-
+            
+    dataset = positive_pyg_data + negative_pyg_data
     return dataset
 
 
