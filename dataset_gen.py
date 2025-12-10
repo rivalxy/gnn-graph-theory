@@ -39,6 +39,24 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
     return positives
 
 
+#FIXME bad implementation
+def gen_negative_examples(positives, num_of_nodes: int, ) -> list:
+    negatives = []
+    seen_negatives = set()
+
+    for mapping in positives:
+        u = random.choice(list(mapping.keys()))
+        v_old = mapping[u]
+        v_new = random.choice(
+            [v for v in range(num_of_nodes) if v != v_old])
+        neg_map = mapping.copy()
+        neg_map[u] = v_new
+        key = frozenset(neg_map.items())
+        if key in seen_negatives:
+            continue
+        seen_negatives.add(key)
+        negatives.append(neg_map)
+    return negatives
 
 
 def make_pyg_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, int], label: int) -> Data:
@@ -95,20 +113,12 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
             dataset.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=1))
 
-        # FIXME negative examples
-        for mapping in positives:
-            u = random.choice(list(mapping.keys()))
-            v_old = mapping[u]
-            v_new = random.choice(
-                [v for v in range(num_of_nodes) if v != v_old])
-            neg_map = mapping.copy()
-            neg_map[u] = v_new
-            key = frozenset(neg_map.items())
-            if key in seen_negatives:
-                continue
-            seen_negatives.add(key)
+        negatives = gen_negative_examples(positives, num_of_nodes)
+        for mapping in negatives:
+            assert is_paut(edge_list, mapping)
+            assert not is_extensible(group, mapping)
             dataset.append(make_pyg_data(
-                edge_list, num_of_nodes, neg_map, label=0))
+                edge_list, num_of_nodes, mapping, label=0))
 
     return dataset
 
