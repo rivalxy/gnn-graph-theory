@@ -12,12 +12,33 @@ MAX_EXAMPLES_NUM = 10
 MAX_ATTEMPTS = 100
 
 
-def generate_positive_examples() -> list:
-    return []
+def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_num: int) -> list:
+    seen_positives = set()
+    positives = []
+    attempts = 0
+
+    while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
+        attempts += 1
+        perm = group.random().array_form
+        nodes = list(range(num_of_nodes))
+        if perm == nodes:
+            continue  # skip identity
+
+        p_aut_size = random.randint(
+            max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
+        p_aut_size = min(p_aut_size, num_of_nodes)
+        domain = random.sample(nodes, p_aut_size)
+        mapping = {i: perm[i] for i in domain}
+
+        key = frozenset(mapping.items())
+        if key in seen_positives:
+            continue
+
+        seen_positives.add(key)
+        positives.append(mapping)
+    return positives
 
 
-def generate_negative_examples() -> list:
-    return []
 
 
 def make_pyg_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int, int], label: int) -> Data:
@@ -61,32 +82,16 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(Graph)
         group_size = grpsize1 * 10**grpsize2
 
-        # ensure 10-30 examples per graph with 1:1 ratio of positive to negative examples
+        # ensure up to 10 examples per graph with 1:1 ratio of positive to negative examples
         examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
         generators = [Permutation(g) for g in generators_raw]
         group = PermutationGroup(generators)
 
-        seen_positives = set()
-        seen_negatives = set()
-
-        # positive examples
-        positives = []
-        attempts = 0
-        while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
-            attempts += 1
-            perm = group.random().array_form
-
-            p_aut_size = random.randint(
-                max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
-            p_aut_size = min(p_aut_size, num_of_nodes)
-            domain = random.sample(range(num_of_nodes), p_aut_size)
-            mapping = {i: perm[i] for i in domain}
-
-            key = frozenset(mapping.items())
-            if key in seen_positives:
-                continue
-            seen_positives.add(key)
-            positives.append(mapping)
+        positives = gen_positive_examples(
+            group, num_of_nodes, examples_num)
+        for mapping in positives:
+            assert is_paut(edge_list, mapping) and is_extensible(
+                group, mapping)
             dataset.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=1))
 
