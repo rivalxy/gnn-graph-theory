@@ -23,11 +23,12 @@ def is_paut(edge_list: list[tuple], mapping: dict[int, int]) -> bool:
     """
     Check if mapping is a partial automorphism on given graph.
     """
+
     edge_set = set()
     for u, v in edge_list:
         edge_set.add((u, v))
         edge_set.add((v, u))
-    
+
     domain = set(mapping.keys())
     for i, u in enumerate(domain):
         for v in domain[i+1:]:

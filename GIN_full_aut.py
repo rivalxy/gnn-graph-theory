@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 
 seed_everything(42)
 
-raw_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
+raw_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
 
 graphs_train, graphs_val = train_test_split(
     raw_graphs, test_size=0.2, random_state=42)
