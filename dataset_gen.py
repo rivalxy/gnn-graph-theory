@@ -8,7 +8,7 @@ from sympy.combinatorics import Permutation, PermutationGroup
 from dataset.utils import *
 
 
-MAX_EXAMPLES_NUM = 30
+MAX_EXAMPLES_NUM = 10
 MAX_ATTEMPTS = 100
 
 
@@ -109,8 +109,8 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
 
 
 if __name__ == "__main__":
-    all_graphs = read_graphs_from_g6("dataset/2000_raw_graphs.g6")
-    graphs_train, graphs_val = train_test_split(all_graphs, test_size=0.2)
+    positive_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
+    graphs_train, graphs_val = train_test_split(positive_graphs, test_size=0.2)
     train_dataset = generate_paut_dataset(graphs_train)
     val_dataset = generate_paut_dataset(graphs_val)
     print(
