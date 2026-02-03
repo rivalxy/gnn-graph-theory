@@ -22,7 +22,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
         perm = group.random().array_form
         nodes = list(range(num_of_nodes))
         if perm == nodes:
-            continue  # skip identity
+            continue  # skip trivial case
 
         p_aut_size = random.randint(
             max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
@@ -113,13 +113,14 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
             positive_pyg_data.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=1))
 
-        negatives = gen_negative_examples(positives, num_of_nodes)
+        negatives = gen_negative_examples(
+            group, positives, examples_num, num_of_nodes, edge_list)
         for mapping in negatives:
             assert is_paut(edge_list, mapping)
             assert not is_extensible(group, mapping)
             negative_pyg_data.append(make_pyg_data(
                 edge_list, num_of_nodes, mapping, label=0))
-            
+
     dataset = positive_pyg_data + negative_pyg_data
     return dataset
 
