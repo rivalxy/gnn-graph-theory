@@ -127,7 +127,12 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
 if __name__ == "__main__":
     positive_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
     graphs_train, graphs_val = train_test_split(positive_graphs, test_size=0.2)
+
     train_dataset = generate_paut_dataset(graphs_train)
     val_dataset = generate_paut_dataset(graphs_val)
+
+    torch.save(train_dataset, "dataset/train_dataset.pt")
+    torch.save(val_dataset, "dataset/val_dataset.pt")
+
     print(
         f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")
