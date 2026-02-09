@@ -22,7 +22,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
     while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
         attempts += 1
         perm = group.random().array_form
-        if perm == nodes:
+        if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
         p_aut_size = random.randint(
@@ -57,7 +57,7 @@ def negatives_blocking(group: PermutationGroup,
     while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * MAX_EXAMPLES_NUM:
         attempts += 1
         perm = group.random().array_form
-        if perm == nodes:
+        if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
         p_aut_size = random.randint(
@@ -107,12 +107,17 @@ def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
             test_map = positive.copy()
             test_map[node] = target
 
+            valid = True
             for neighbor in node_neighbors:
                 if neighbor in test_map:
                     if test_map[neighbor] not in target_neighbors:
+                        valid = False
                         break
+
+            if valid:
+                return test_map
             
-    return test_map
+    return None
 
 
 # TODO
@@ -155,7 +160,7 @@ def make_pyg_data(edge_list: list[tuple], num_of_nodes: int,  mapping: dict[int,
     return data
 
 
-def generate_paut_dataset(graphs: list[Graph]) -> list:
+def generate_paut_dataset(pynauty_graphs: list[Graph]) -> list:
     """
     Generates partial automorphism mappings with their labels from a list of pynauty graphs.
 
@@ -166,8 +171,8 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
     positive_pyg_data = []
     negative_pyg_data = []
 
-    for Graph, num_of_nodes, edge_list in graphs:
-        generators_raw, grpsize1, grpsize2, _, _ = autgrp(Graph)
+    for pynauty_graph, num_of_nodes, edge_list in pynauty_graphs:
+        generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
         group_size = grpsize1 * 10**grpsize2
 
         # ensure up to 10 examples per graph with 1:1 ratio of positive to negative examples
