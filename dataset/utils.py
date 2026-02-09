@@ -53,16 +53,18 @@ def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
             return True
     return False
 
+
 if __name__ == "__main__":
     test_graph = nx.Graph()
-    test_graph.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 4), (2, 4), (4, 5), (5, 6)])
+    test_graph.add_edges_from(
+        [(0, 1), (1, 2), (2, 3), (3, 4), (2, 4), (4, 5), (5, 6)])
     test_edge_list = list(test_graph.edges())
     positive_mappings = [{0: 0, 1: 1, 2: 2},
                          {0: 0, 1: 1, 4: 4}]
     negative_mappings = [{0: 2, 1: 1, 2: 0},
                          {0: 0, 1: 1, 2: 2, 3: 4, 4: 3},
                          ]
-    
+
     num_of_nodes = int(test_graph.number_of_nodes())
     pynauty_graph = Graph(num_of_nodes)
     pynauty_graph.set_adjacency_dict(dict(test_graph.adjacency()))
