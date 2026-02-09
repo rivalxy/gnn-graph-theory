@@ -1,7 +1,8 @@
-from pynauty import Graph, autgrp
-from sklearn.model_selection import train_test_split
 import random
 import torch
+
+from pynauty import Graph, autgrp
+from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data
 from sympy.combinatorics import Permutation, PermutationGroup
 
@@ -25,7 +26,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
             continue  # skip trivial case
 
         p_aut_size = random.randint(
-            max(3, num_of_nodes // 3), max(4, 2 * num_of_nodes // 3))
+            2 * num_of_nodes // 3, 7 * num_of_nodes // 4)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
