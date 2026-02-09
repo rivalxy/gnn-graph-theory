@@ -26,7 +26,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
             continue  # skip trivial case
 
         p_aut_size = random.randint(
-            2 * num_of_nodes // 3, 7 * num_of_nodes // 4)
+            min(3, num_of_nodes // 3), 4 * num_of_nodes // 5)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -61,7 +61,7 @@ def negatives_blocking(group: PermutationGroup,
             continue  # skip trivial case
 
         p_aut_size = random.randint(
-            2 * num_of_nodes // 3, 7 * num_of_nodes // 4)
+            min(3, num_of_nodes // 3), 4 * num_of_nodes // 5)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -111,8 +111,6 @@ def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
                 if neighbor in test_map:
                     if test_map[neighbor] not in target_neighbors:
                         break
-            if not is_paut(list(adj.items()), test_map):
-                return None
             
     return test_map
 
