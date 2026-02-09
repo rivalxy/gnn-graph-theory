@@ -39,23 +39,94 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
     return positives
 
 
-#FIXME bad implementation
-def gen_negative_examples(positives, num_of_nodes: int, ) -> list:
+def negatives_blocking(group: PermutationGroup,
+                       examples_num: int,
+                       num_of_nodes: int,
+                       edge_list: list[tuple]
+                       ) -> list:
     negatives = []
     seen_negatives = set()
+    attempts = 0
+    nodes = list(range(num_of_nodes))
 
-    for mapping in positives:
-        u = random.choice(list(mapping.keys()))
-        v_old = mapping[u]
-        v_new = random.choice(
-            [v for v in range(num_of_nodes) if v != v_old])
-        neg_map = mapping.copy()
-        neg_map[u] = v_new
-        key = frozenset(neg_map.items())
+    adjacency_list = {}
+    for u, v in edge_list:
+        adjacency_list.setdefault(u, set()).add(v)
+        adjacency_list.setdefault(v, set()).add(u)
+
+    while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * MAX_EXAMPLES_NUM:
+        attempts += 1
+        perm = group.random().array_form
+        if perm == nodes:
+            continue  # skip trivial case
+
+        p_aut_size = random.randint(
+            2 * num_of_nodes // 3, 7 * num_of_nodes // 4)
+        domain = random.sample(nodes, p_aut_size)
+        mapping = {i: perm[i] for i in domain}
+
+        blocked_mapping = block_automorphism(mapping, num_of_nodes, adjacency_list)
+
+        if blocked_mapping is None:
+            continue
+
+        if not is_paut(edge_list, blocked_mapping):
+            continue
+        if is_extensible(group, blocked_mapping):
+            continue
+
+        # ensure uniqueness
+        key = frozenset(blocked_mapping.items())
         if key in seen_negatives:
             continue
+
         seen_negatives.add(key)
-        negatives.append(neg_map)
+        negatives.append(blocked_mapping)
+
+    return negatives
+
+
+def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
+    nodes = list(range(num_of_nodes))
+
+    unmapped_nodes = [n for n in nodes if n not in positive]
+    targets = [n for n in nodes if n not in positive.values()]
+
+    if not unmapped_nodes or not targets:
+        return None
+
+    random.shuffle(unmapped_nodes)
+    random.shuffle(targets)
+
+    for node in unmapped_nodes[:min(5, len(unmapped_nodes))]:
+        node_neighbors = adj.get(node, set())
+
+        for target in targets[:min(5, len(targets))]:
+            target_neighbors = adj.get(target, set())
+
+            test_map = positive.copy()
+            test_map[node] = target
+
+            for neighbor in node_neighbors:
+                if neighbor in test_map:
+                    if test_map[neighbor] not in target_neighbors:
+                        break
+            if not is_paut(list(adj.items()), test_map):
+                return None
+            
+    return test_map
+
+
+# TODO
+def gen_negative_examples(group: PermutationGroup,
+                          examples_num: int,
+                          num_of_nodes: int,
+                          edge_list: list[tuple]
+                          ) -> list:
+
+    negatives = negatives_blocking(
+        group, examples_num, num_of_nodes, edge_list)
+
     return negatives
 
 
