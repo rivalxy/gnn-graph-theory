@@ -17,11 +17,11 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
     seen_positives = set()
     positives = []
     attempts = 0
+    nodes = list(range(num_of_nodes))
 
     while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
         attempts += 1
         perm = group.random().array_form
-        nodes = list(range(num_of_nodes))
         if perm == nodes:
             continue  # skip trivial case
 
@@ -115,7 +115,7 @@ def generate_paut_dataset(graphs: list[Graph]) -> list:
                 edge_list, num_of_nodes, mapping, label=1))
 
         negatives = gen_negative_examples(
-            group, positives, examples_num, num_of_nodes, edge_list)
+            group, examples_num, num_of_nodes, edge_list)
         for mapping in negatives:
             assert is_paut(edge_list, mapping)
             assert not is_extensible(group, mapping)
