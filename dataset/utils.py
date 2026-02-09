@@ -28,6 +28,10 @@ def is_paut(edge_list: list[tuple], mapping: dict[int, int]) -> bool:
     Check if mapping is a partial automorphism on given graph.
     """
 
+    # Check injectivity
+    if len(set(mapping.values())) != len(mapping):
+        return False
+
     edge_set = set()
     for u, v in edge_list:
         edge_set.add((u, v))
