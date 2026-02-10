@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data
 from sympy.combinatorics import Permutation, PermutationGroup
 
-from dataset.utils import is_paut, is_extensible, read_graphs_from_g6
+from utils import is_paut, is_extensible, read_graphs_from_g6
 
 
 MAX_EXAMPLES_NUM = 10
