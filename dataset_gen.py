@@ -42,17 +42,12 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
 def negatives_blocking(group: PermutationGroup,
                        examples_num: int,
                        num_of_nodes: int,
-                       edge_list: list[tuple]
+                       adjacency_list: dict[int, set]
                        ) -> list:
     negatives = []
     seen_negatives = set()
     attempts = 0
     nodes = list(range(num_of_nodes))
-
-    adjacency_list = {}
-    for u, v in edge_list:
-        adjacency_list.setdefault(u, set()).add(v)
-        adjacency_list.setdefault(v, set()).add(u)
 
     while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * MAX_EXAMPLES_NUM:
         attempts += 1
@@ -71,7 +66,7 @@ def negatives_blocking(group: PermutationGroup,
         if blocked_mapping is None:
             continue
 
-        if not is_paut(edge_list, blocked_mapping):
+        if not is_paut(adjacency_list, blocked_mapping):
             continue
         if is_extensible(group, blocked_mapping):
             continue
@@ -125,11 +120,11 @@ def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
 def gen_negative_examples(group: PermutationGroup,
                           examples_num: int,
                           num_of_nodes: int,
-                          edge_list: list[tuple]
+                          adjacency_list: dict[int, set]
                           ) -> list:
 
     negatives = negatives_blocking(
-        group, examples_num, num_of_nodes, edge_list)
+        group, examples_num, num_of_nodes, adjacency_list)
 
     return negatives
 
@@ -152,14 +147,14 @@ def make_pyg_data(tensor_edge_index: torch.Tensor, num_of_nodes: int,  mapping: 
     return data
 
 
-def build_edge_index(edge_list: list[tuple]) -> torch.Tensor:
-    if len(edge_list) == 0:
+def build_edge_index(adjacency_list: dict[int, set]) -> torch.Tensor:
+    if len(adjacency_list) == 0:
         return torch.empty((2, 0), dtype=torch.long)
 
     edges = []
-    for u, v in edge_list:
-        edges.append([u, v])
-        edges.append([v, u])
+    for u, neighbors in adjacency_list.items():
+        for v in neighbors:
+            edges.append([u, v])
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
     return edge_index
 
@@ -175,7 +170,7 @@ def generate_paut_dataset(pynauty_graphs: list[Graph]) -> list:
     positive_pyg_data = []
     negative_pyg_data = []
 
-    for pynauty_graph, num_of_nodes, edge_list in pynauty_graphs:
+    for pynauty_graph, num_of_nodes, adjacency_list in pynauty_graphs:
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
         group_size = grpsize1 * 10**grpsize2
 
@@ -184,20 +179,20 @@ def generate_paut_dataset(pynauty_graphs: list[Graph]) -> list:
         generators = [Permutation(g) for g in generators_raw]
         group = PermutationGroup(generators)
 
-        tensor_edge_index = build_edge_index(edge_list)
+        tensor_edge_index = build_edge_index(adjacency_list)
 
         positives = gen_positive_examples(
             group, num_of_nodes, examples_num)
         for mapping in positives:
-            assert is_paut(edge_list, mapping)
+            assert is_paut(adjacency_list, mapping)
             assert is_extensible(group, mapping)
             positive_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=1))
 
         negatives = gen_negative_examples(
-            group, examples_num, num_of_nodes, edge_list)
+            group, examples_num, num_of_nodes, adjacency_list)
         for mapping in negatives:
-            assert is_paut(edge_list, mapping)
+            assert is_paut(adjacency_list, mapping)
             assert not is_extensible(group, mapping)
             negative_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=0))
