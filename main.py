@@ -1,67 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from torch_geometric import seed_everything
-from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.loader import DataLoader
-
-seed_everything(42)
-
-train_dataset = torch.load("dataset/train_dataset.pt", weights_only=False)
-val_dataset = torch.load("dataset/val_dataset.pt", weights_only=False)
-
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=128)
+from model import GIN
 
 
-class GIN(nn.Module):
-    def __init__(self, hidden_dim=128, num_layers=5, dropout=0.2):
-        super().__init__()
-
-        self.dropout = dropout
-        self.convs = nn.ModuleList()
-
-        self.convs.append(
-            GINConv(nn.Sequential(
-                nn.Linear(3, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU(),
-                nn.Linear(hidden_dim, hidden_dim),
-            ))
-        )
-
-        for _ in range(num_layers - 1):
-            self.convs.append(
-                GINConv(nn.Sequential(
-                    nn.Linear(hidden_dim, hidden_dim),
-                    nn.BatchNorm1d(hidden_dim),
-                    nn.ReLU(),
-                    nn.Linear(hidden_dim, hidden_dim),
-                ))
-            )
-
-        self.classifier = nn.Linear(hidden_dim, 1)
-
-    def forward(self, data):
-        x, edge_index, batch = data.x, data.edge_index, data.batch
-        for conv in self.convs:
-            x = F.relu(conv(x, edge_index))
-            x = F.dropout(x, self.dropout, training=self.training)
-        x = global_add_pool(x, batch)
-        return self.classifier(x).view(-1)
-
-
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-model = GIN().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
-criterion = nn.BCEWithLogitsLoss()
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='max', factor=0.5, patience=3
-)
-
-
-def train_epoch():
+def train():
     model.train()
     total_loss = 0
     total_samples = 0
@@ -80,7 +25,7 @@ def train_epoch():
 
 
 @torch.no_grad()
-def eval_epoch(loader):
+def test(loader):
     model.eval()
     total_correct = 0
     total = 0
@@ -111,13 +56,29 @@ def eval_epoch(loader):
 
 
 if __name__ == "__main__":
+    seed_everything(42)
+
+    train_dataset = torch.load("dataset/train_dataset.pt", weights_only=False)
+    val_dataset = torch.load("dataset/val_dataset.pt", weights_only=False)
+
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=128)
+
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = GIN().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
+    criterion = nn.BCEWithLogitsLoss()
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.5, patience=3
+    )
+
     # train_loss, train_acc, train_f1, val_acc, val_f1
     best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]
 
     for epoch in range(1, 101):
-        train_loss = train_epoch()
-        train_acc, train_f1 = eval_epoch(train_loader)
-        val_acc, val_f1 = eval_epoch(val_loader)
+        train_loss = train()
+        train_acc, train_f1 = test(train_loader)
+        val_acc, val_f1 = test(val_loader)
         scheduler.step(val_acc)
 
         if val_acc > best_model_stats[3]:
