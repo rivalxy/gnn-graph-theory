@@ -7,11 +7,13 @@ from torch_geometric.data import Data
 from sympy.combinatorics import Permutation, PermutationGroup
 from collections import defaultdict
 
-from utils import is_paut, is_extensible, read_graphs_from_g6, positives_to_csv, negatives_to_csv
+from utils import is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
 
 
 MAX_EXAMPLES_NUM = 10
 MAX_ATTEMPTS = 100
+
+paut_sizes = defaultdict(list)
 
 
 def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_num: int) -> list:
@@ -36,7 +38,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
             continue
 
         seen_positives.add(key)
-        positives.append(tuple(mapping, p_aut_size))
+        positives.append((mapping, p_aut_size))
     return positives
 
 
@@ -95,7 +97,7 @@ def negatives_blocking(group: PermutationGroup,
         seen_negatives.add(key)
         extension_size = p_aut_size - original_paut_size
         negatives.append(
-            tuple(blocked_mapping, original_paut_size, extension_size))
+            (blocked_mapping, original_paut_size, extension_size))
 
     return negatives
 
@@ -202,31 +204,26 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str) -> lis
 
         positives = gen_positive_examples(
             group, num_of_nodes, examples_num)
-        positives_stats = defaultdict(list)
 
         for mapping, p_aut_size in positives:
             assert is_paut(adjacency_list, mapping)
             assert is_extensible(group, mapping)
 
-            positives_stats[num_of_nodes].append(p_aut_size)
+            paut_sizes[num_of_nodes].append((p_aut_size, p_aut_size, dataset_type))
             positive_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=1))
 
         negatives = gen_negative_examples(
             group, examples_num, num_of_nodes, adjacency_list)
-        negatives_stats = defaultdict(list)
 
         for mapping, original_paut_size, extension_size in negatives:
             assert is_paut(adjacency_list, mapping)
             assert not is_extensible(group, mapping)
 
-            negatives_stats[num_of_nodes].append(
-                (original_paut_size, extension_size))
+            paut_sizes[num_of_nodes].append(
+                (original_paut_size, extension_size, dataset_type))
             negative_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=0))
-
-    positives_to_csv(positives_stats, f"dataset/positives_stats_{dataset_type}.csv")
-    negatives_to_csv(negatives_stats, f"dataset/negatives_stats_{dataset_type}.csv")
 
     dataset = positive_pyg_data + negative_pyg_data
     return dataset
@@ -239,8 +236,11 @@ if __name__ == "__main__":
     train_dataset = generate_paut_dataset(graphs_train, dataset_type="train")
     val_dataset = generate_paut_dataset(graphs_val, dataset_type="val")
 
-    torch.save(train_dataset, "dataset/train_dataset.pt")
-    torch.save(val_dataset, "dataset/val_dataset.pt")
+    # torch.save(train_dataset, "dataset/train_dataset.pt")
+    # torch.save(val_dataset, "dataset/val_dataset.pt")
+
+    paut_sizes_to_csv(
+        paut_sizes, f"dataset/partial_automorphism_stats.csv")
 
     print(
         f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")

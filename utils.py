@@ -4,13 +4,14 @@ import csv
 from pynauty import Graph
 from sympy.combinatorics import Permutation, PermutationGroup
 from pynauty import Graph, autgrp
+from collections import defaultdict
 
 
-def build_adjacency_list(edge_list: list[tuple]) -> dict[int, set]:
-    adjacency_list = {}
+def build_adjacency_list(edge_list: list[tuple]) -> defaultdict[int, set]:
+    adjacency_list = defaultdict(set)
     for u, v in edge_list:
-        adjacency_list.setdefault(u, set()).add(v)
-        adjacency_list.setdefault(v, set()).add(u)
+        adjacency_list[u].add(v)
+        adjacency_list[v].add(u)
     return adjacency_list
 
 
@@ -63,21 +64,14 @@ def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
             return True
     return False
 
-def positives_to_csv(examples: dict[int, list[int]], file_path: str):
-    with open(file_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['num_of_nodes', 'p_aut_size'])
-        for num_of_nodes, p_aut_sizes in examples.items():
-            for p_aut_size in p_aut_sizes:
-                writer.writerow([num_of_nodes, p_aut_size])
 
-def negatives_to_csv(examples: dict[int, list[tuple]], file_path: str):
+def paut_sizes_to_csv(examples: dict[int, list[tuple]], file_path: str):
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['num_of_nodes', 'original_paut_size', 'extension_size'])
+        writer.writerow(['num_of_nodes', 'original_paut_size', 'extension_size', 'dataset_type'])
         for num_of_nodes, stats in examples.items():
-            for original_paut_size, extension_size in stats:
-                writer.writerow([num_of_nodes, original_paut_size, extension_size])
+            for original_paut_size, extension_size, example_type in stats:
+                writer.writerow([num_of_nodes, original_paut_size, extension_size, example_type])
 
 
 if __name__ == "__main__":
