@@ -209,7 +209,7 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str) -> lis
             assert is_paut(adjacency_list, mapping)
             assert is_extensible(group, mapping)
 
-            paut_sizes[num_of_nodes].append((p_aut_size, p_aut_size, dataset_type))
+            paut_sizes[num_of_nodes].append((p_aut_size, 0, dataset_type))
             positive_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=1))
 
