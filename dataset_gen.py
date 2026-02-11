@@ -5,8 +5,9 @@ from pynauty import Graph, autgrp
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data
 from sympy.combinatorics import Permutation, PermutationGroup
+from collections import defaultdict
 
-from utils import is_paut, is_extensible, read_graphs_from_g6
+from utils import is_paut, is_extensible, read_graphs_from_g6, positives_to_csv, negatives_to_csv
 
 
 MAX_EXAMPLES_NUM = 10
@@ -35,7 +36,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
             continue
 
         seen_positives.add(key)
-        positives.append(mapping)
+        positives.append(tuple(mapping, p_aut_size))
     return positives
 
 
@@ -59,12 +60,13 @@ def negatives_blocking(group: PermutationGroup,
         p_aut_size = random.randint(
             min(3, num_of_nodes // 3), maximum_size)
         p_aut_size -= 1
+        original_paut_size = p_aut_size
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
         blocked_mapping = block_automorphism(
             mapping, num_of_nodes, adjacency_list)
-        
+
         if blocked_mapping is None:
             continue
 
@@ -73,7 +75,7 @@ def negatives_blocking(group: PermutationGroup,
         while random.random() < 0.5 and p_aut_size < maximum_size:
             new_mapping = block_automorphism(
                 blocked_mapping, num_of_nodes, adjacency_list)
-            
+
             if new_mapping is None:
                 break
 
@@ -91,7 +93,9 @@ def negatives_blocking(group: PermutationGroup,
             continue
 
         seen_negatives.add(key)
-        negatives.append(blocked_mapping)
+        extension_size = p_aut_size - original_paut_size
+        negatives.append(
+            tuple(blocked_mapping, original_paut_size, extension_size))
 
     return negatives
 
@@ -173,11 +177,12 @@ def build_edge_index(adjacency_list: dict[int, set]) -> torch.Tensor:
     return edge_index
 
 
-def generate_paut_dataset(pynauty_graphs: list[Graph]) -> list:
+def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str) -> list:
     """
     Generates partial automorphism mappings with their labels from a list of pynauty graphs.
 
     :param graphs: List of pynauty graphs.
+    :param dataset_type: Type of the dataset (e.g., "train" or "val").
     :returns: List of PyG Data objects containing partial automorphism mappings and labels.
     """
 
@@ -197,19 +202,31 @@ def generate_paut_dataset(pynauty_graphs: list[Graph]) -> list:
 
         positives = gen_positive_examples(
             group, num_of_nodes, examples_num)
-        for mapping in positives:
+        positives_stats = defaultdict(list)
+
+        for mapping, p_aut_size in positives:
             assert is_paut(adjacency_list, mapping)
             assert is_extensible(group, mapping)
+
+            positives_stats[num_of_nodes].append(p_aut_size)
             positive_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=1))
 
         negatives = gen_negative_examples(
             group, examples_num, num_of_nodes, adjacency_list)
-        for mapping in negatives:
+        negatives_stats = defaultdict(list)
+
+        for mapping, original_paut_size, extension_size in negatives:
             assert is_paut(adjacency_list, mapping)
             assert not is_extensible(group, mapping)
+
+            negatives_stats[num_of_nodes].append(
+                (original_paut_size, extension_size))
             negative_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=0))
+
+    positives_to_csv(positives_stats, f"dataset/positives_stats_{dataset_type}.csv")
+    negatives_to_csv(negatives_stats, f"dataset/negatives_stats_{dataset_type}.csv")
 
     dataset = positive_pyg_data + negative_pyg_data
     return dataset
@@ -219,8 +236,8 @@ if __name__ == "__main__":
     positive_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
     graphs_train, graphs_val = train_test_split(positive_graphs, test_size=0.2)
 
-    train_dataset = generate_paut_dataset(graphs_train)
-    val_dataset = generate_paut_dataset(graphs_val)
+    train_dataset = generate_paut_dataset(graphs_train, dataset_type="train")
+    val_dataset = generate_paut_dataset(graphs_val, dataset_type="val")
 
     torch.save(train_dataset, "dataset/train_dataset.pt")
     torch.save(val_dataset, "dataset/val_dataset.pt")
