@@ -48,6 +48,7 @@ def negatives_blocking(group: PermutationGroup,
     seen_negatives = set()
     attempts = 0
     nodes = list(range(num_of_nodes))
+    maximum_size = 4 * num_of_nodes // 5
 
     while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * MAX_EXAMPLES_NUM:
         attempts += 1
@@ -56,15 +57,28 @@ def negatives_blocking(group: PermutationGroup,
             continue  # skip trivial case
 
         p_aut_size = random.randint(
-            min(3, num_of_nodes // 3), 4 * num_of_nodes // 5)
+            min(3, num_of_nodes // 3), maximum_size)
+        p_aut_size -= 1
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
         blocked_mapping = block_automorphism(
             mapping, num_of_nodes, adjacency_list)
-
+        
         if blocked_mapping is None:
             continue
+
+        p_aut_size += 1
+
+        while random.random() < 0.5 and p_aut_size < maximum_size:
+            new_mapping = block_automorphism(
+                blocked_mapping, num_of_nodes, adjacency_list)
+            
+            if new_mapping is None:
+                break
+
+            blocked_mapping = new_mapping
+            p_aut_size += 1
 
         if not is_paut(adjacency_list, blocked_mapping):
             continue
