@@ -1,23 +1,15 @@
 import torch
-from torch_geometric.loader import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
+
 from torch_geometric import seed_everything
 from torch_geometric.nn import GINConv, global_add_pool
-
-from dataset_gen import generate_paut_dataset
-from utils import read_graphs_from_g6
-from sklearn.model_selection import train_test_split
+from torch_geometric.loader import DataLoader
 
 seed_everything(42)
 
-raw_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
-
-graphs_train, graphs_val = train_test_split(
-    raw_graphs, test_size=0.2, random_state=42)
-
-train_dataset = generate_paut_dataset(graphs_train, dataset_type="train")
-val_dataset = generate_paut_dataset(graphs_val, dataset_type="val")
+train_dataset = torch.load("dataset/train_dataset.pt", weights_only=False)
+val_dataset = torch.load("dataset/val_dataset.pt", weights_only=False)
 
 train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=128)
