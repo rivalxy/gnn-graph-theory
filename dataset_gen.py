@@ -9,7 +9,6 @@ from collections import defaultdict
 
 from utils import is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
 
-
 MAX_EXAMPLES_NUM = 10
 MAX_ATTEMPTS = 100
 
@@ -236,11 +235,11 @@ if __name__ == "__main__":
     train_dataset = generate_paut_dataset(graphs_train, dataset_type="train")
     val_dataset = generate_paut_dataset(graphs_val, dataset_type="val")
 
-    # torch.save(train_dataset, "dataset/train_dataset.pt")
-    # torch.save(val_dataset, "dataset/val_dataset.pt")
+    torch.save(train_dataset, "dataset/train_dataset.pt")
+    torch.save(val_dataset, "dataset/val_dataset.pt")
 
     paut_sizes_to_csv(
-        paut_sizes, f"dataset/partial_automorphism_stats.csv")
+        paut_sizes, f"dataset/partial_automorphism_sizes.csv")
 
     print(
         f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")
