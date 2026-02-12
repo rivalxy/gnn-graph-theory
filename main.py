@@ -1,7 +1,8 @@
+import argparse
 import torch
 import torch.nn as nn
+import torch_geometric
 
-from torch_geometric import seed_everything
 from torch_geometric.loader import DataLoader
 from model import GIN
 
@@ -56,26 +57,49 @@ def test(loader):
 
 
 if __name__ == "__main__":
-    seed_everything(42)
+    parser = argparse.ArgumentParser(description="GIN for partial automorphism extension problem")
+    parser.add_argument("--seed", type=int, default=42, 
+                        help="Random seed for reproducibility (default: 42)") 
+    parser.add_argument("--batch_size", type=int, default=128,
+                        help="Input batch size (default: 128)")
+    parser.add_argument("--epochs", type=int, default=100,
+                        help="Number of epochs to train (default: 100)")
+    parser.add_argument("--lr", type=float, default=5e-4,
+                        help="Learning rate (default: 5e-4)")
+    parser.add_argument("--weight_decay", type=float, default=1e-5,
+                        help="Weight decay (default: 1e-5)")
+    parser.add_argument("--hidden_dim", type=int, default=128,
+                        help="Hidden dimension size (default: 128)") 
+    parser.add_argument("--num_layers", type=int, default=5, 
+                        help="Number of GIN layers (default: 5)")
+    parser.add_argument("--dropout", type=float, default=0.2, 
+                        help="Dropout rate (default: 0.2)")
+    parser.add_argument("--factor", type=float, default=0.5,
+                        help="Factor for learning rate scheduler (default: 0.5)")
+    parser.add_argument("--patience", type=int, default=3,
+                        help="Patience for learning rate scheduler (default: 3)")
+    args = parser.parse_args()
+
+    torch_geometric.seed_everything(args.seed)
 
     train_dataset = torch.load("dataset/train_dataset.pt", weights_only=False)
     val_dataset = torch.load("dataset/val_dataset.pt", weights_only=False)
 
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=128)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = GIN().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
+    model = GIN(args.hidden_dim, args.num_layers, args.dropout).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='max', factor=0.5, patience=3
+        optimizer, mode='max', factor=args.factor, patience=args.patience
     )
 
     # train_loss, train_acc, train_f1, val_acc, val_f1
     best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]
 
-    for epoch in range(1, 101):
+    for epoch in range(1, args.epochs + 1):
         train_loss = train()
         train_acc, train_f1 = test(train_loader)
         val_acc, val_f1 = test(val_loader)
