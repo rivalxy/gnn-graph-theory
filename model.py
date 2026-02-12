@@ -4,7 +4,7 @@ from torch_geometric.nn import GINConv, global_add_pool
 
 
 class GIN(nn.Module):
-    def __init__(self, hidden_dim=128, num_layers=5, dropout=0.2):
+    def __init__(self, hidden_dim, num_layers, dropout):
         super().__init__()
 
         self.dropout = dropout
