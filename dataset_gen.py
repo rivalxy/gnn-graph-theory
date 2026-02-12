@@ -63,47 +63,35 @@ def negatives_blocking(group: PermutationGroup,
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
-        blocked_mapping = block_automorphism(
-            mapping, num_of_nodes, adjacency_list)
+        maximum_extension = maximum_size - p_aut_size
+        extension_size = random.randint(1, maximum_extension)
+        current_extension = 0
+        extension_attempts = 0
 
-        if blocked_mapping is None:
-            continue
-
-        p_aut_size += 1
-
-        if random.random() < 0.8 and p_aut_size < maximum_size:
-            new_mapping = block_automorphism(blocked_mapping, num_of_nodes, adjacency_list)
-
-            if new_mapping is None:
-                continue
-
-            blocked_mapping = new_mapping 
-            p_aut_size += 1
-
-        while random.random() < 0.5 and p_aut_size < maximum_size:
+        while current_extension < extension_size and extension_attempts < MAX_ATTEMPTS:
+            extension_attempts += 1
             new_mapping = block_automorphism(
-                blocked_mapping, num_of_nodes, adjacency_list)
+                mapping, num_of_nodes, adjacency_list)
 
             if new_mapping is None:
                 break
 
-            blocked_mapping = new_mapping
-            p_aut_size += 1
+            mapping = new_mapping
+            current_extension += 1
 
-        if not is_paut(adjacency_list, blocked_mapping):
+        if not is_paut(adjacency_list, mapping):
             continue
-        if is_extensible(group, blocked_mapping):
+        if is_extensible(group, mapping):
             continue
 
         # ensure uniqueness
-        key = frozenset(blocked_mapping.items())
+        key = frozenset(mapping.items())
         if key in seen_negatives:
             continue
 
         seen_negatives.add(key)
-        extension_size = p_aut_size - original_paut_size
         negatives.append(
-            (blocked_mapping, original_paut_size, extension_size))
+            (mapping, original_paut_size, current_extension))
 
     return negatives
 
