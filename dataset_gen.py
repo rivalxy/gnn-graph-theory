@@ -73,6 +73,15 @@ def negatives_blocking(group: PermutationGroup,
 
         p_aut_size += 1
 
+        if random.random() < 0.8 and p_aut_size < maximum_size:
+            new_mapping = block_automorphism(blocked_mapping, num_of_nodes, adjacency_list)
+
+            if new_mapping is None:
+                continue
+
+            blocked_mapping = new_mapping 
+            p_aut_size += 1
+
         while random.random() < 0.5 and p_aut_size < maximum_size:
             new_mapping = block_automorphism(
                 blocked_mapping, num_of_nodes, adjacency_list)
