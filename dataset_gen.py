@@ -27,8 +27,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
         if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
-        p_aut_size = random.randint(
-            min(3, num_of_nodes // 3), 4 * num_of_nodes // 5)
+        p_aut_size = random.randint(num_of_nodes // 2, 4 * num_of_nodes // 5)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -58,8 +57,7 @@ def negatives_blocking(group: PermutationGroup,
         if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
-        p_aut_size = random.randint(
-            min(3, num_of_nodes // 3), maximum_size)
+        p_aut_size = random.randint(num_of_nodes // 2, maximum_size)
         p_aut_size -= 1
         original_paut_size = p_aut_size
         domain = random.sample(nodes, p_aut_size)
