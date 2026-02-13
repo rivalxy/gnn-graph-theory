@@ -9,6 +9,7 @@ class GIN(nn.Module):
 
         self.dropout = dropout
         self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
 
         for _ in range(num_layers - 1):
             self.convs.append(
@@ -19,6 +20,7 @@ class GIN(nn.Module):
                     nn.Linear(2 * hidden_dim, hidden_dim),
                 ))
             )
+            self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
             input_dim = hidden_dim
 
         self.lin1 = nn.Linear(hidden_dim, hidden_dim)
@@ -27,8 +29,8 @@ class GIN(nn.Module):
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-        for conv in self.convs:
-            x = F.relu(conv(x, edge_index))
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
             x = F.dropout(x, self.dropout, training=self.training)
         x = global_add_pool(x, batch)
         x = F.relu(self.batch_norm1(self.lin1(x)))
