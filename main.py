@@ -15,7 +15,6 @@ def train():
     for data in train_loader:
         data = data.to(device)
         out = model(data)
-
         loss = criterion(out, data.y.float())
 
         optimizer.zero_grad()
@@ -23,6 +22,7 @@ def train():
         optimizer.step()
 
         total_loss += loss.item() * data.num_graphs
+        
     return total_loss / len(train_loader.dataset)
 
 
@@ -78,8 +78,8 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = GIN(args.hidden_dim, args.num_layers, args.dropout).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    model = GIN(3, args.hidden_dim, args.num_layers, args.dropout).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=args.factor, patience=args.patience
