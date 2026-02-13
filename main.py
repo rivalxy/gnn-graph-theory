@@ -55,8 +55,8 @@ if __name__ == "__main__":
                         help="Number of epochs to train (default: 100)")
     parser.add_argument("--lr", type=float, default=5e-4,
                         help="Learning rate (default: 5e-4)")
-    parser.add_argument("--weight_decay", type=float, default=1e-5,
-                        help="Weight decay (default: 1e-5)")
+    parser.add_argument("--weight_decay", type=float, default=1e-4,
+                        help="Weight decay (default: 1e-4)")
     parser.add_argument("--hidden_dim", type=int, default=128,
                         help="Hidden dimension size (default: 128)") 
     parser.add_argument("--num_layers", type=int, default=5, 
@@ -105,6 +105,8 @@ if __name__ == "__main__":
               f"Val Acc:   {val_acc:.4f} | "
               f"Val F1:    {val_f1:.4f}")
 
+
+    torch.save(model.state_dict(), "results/best_model.pt")
     print("================================\n")
     print("Best Model Stats:")
     print(f"Train Loss: {best_model_stats[0]:.4f} | "
