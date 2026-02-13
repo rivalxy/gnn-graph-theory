@@ -4,56 +4,45 @@ import torch.nn as nn
 import torch_geometric
 
 from torch_geometric.loader import DataLoader
+from sklearn import metrics
 from model import GIN
 
 
 def train():
     model.train()
     total_loss = 0
-    total_samples = 0
 
     for data in train_loader:
         data = data.to(device)
-        optimizer.zero_grad()
         out = model(data)
+
         loss = criterion(out, data.y.float())
+
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item() * data.num_graphs
-        total_samples += data.num_graphs
-    return total_loss / total_samples
+    return total_loss / len(train_loader.dataset)
 
 
 @torch.no_grad()
 def test(loader):
     model.eval()
-    total_correct = 0
-    total = 0
-    all_preds = []
-    all_targets = []
+    predictions = []
+    labels = []
 
     for data in loader:
         data = data.to(device)
         out = model(data)
         pred = (out > 0).float()
-        total_correct += (pred == data.y).sum().item()
-        total += data.num_graphs
+        predictions.append(pred.cpu())
+        labels.append(data.y.cpu())
 
-        all_preds.append(pred.cpu().view(-1))
-        all_targets.append(data.y.cpu().float().view(-1))
+    accuracy = metrics.accuracy_score(torch.cat(labels), torch.cat(predictions))
+    f1 = metrics.f1_score(torch.cat(labels), torch.cat(predictions))
 
-    acc = total_correct / total
-    preds = torch.cat(all_preds)
-    targets = torch.cat(all_targets)
-
-    tp = ((preds == 1) & (targets == 1)).sum().item()
-    fp = ((preds == 1) & (targets == 0)).sum().item()
-    fn = ((preds == 0) & (targets == 1)).sum().item()
-    denom = (2 * tp + fp + fn)
-    f1 = 0.0 if denom == 0 else (2 * tp) / denom
-
-    return acc, f1
+    return accuracy, f1
 
 
 if __name__ == "__main__":
