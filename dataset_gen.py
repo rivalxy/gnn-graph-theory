@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from utils import is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
 
-MAX_EXAMPLES_NUM = 10
+MAX_EXAMPLES_NUM = 20
 MAX_ATTEMPTS = 100
 
 paut_sizes = defaultdict(list)
