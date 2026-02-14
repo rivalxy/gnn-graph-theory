@@ -2,6 +2,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torch_geometric
+import pandas as pd
 
 from torch_geometric.loader import DataLoader
 from sklearn import metrics
@@ -53,16 +54,16 @@ if __name__ == "__main__":
                         help="Input batch size (default: 128)")
     parser.add_argument("--epochs", type=int, default=100,
                         help="Number of epochs to train (default: 100)")
-    parser.add_argument("--lr", type=float, default=5e-4,
-                        help="Learning rate (default: 5e-4)")
-    parser.add_argument("--weight_decay", type=float, default=1e-4,
-                        help="Weight decay (default: 1e-4)")
-    parser.add_argument("--hidden_dim", type=int, default=128,
-                        help="Hidden dimension size (default: 128)") 
-    parser.add_argument("--num_layers", type=int, default=5, 
-                        help="Number of GIN layers (default: 5)")
-    parser.add_argument("--dropout", type=float, default=0.2, 
-                        help="Dropout rate (default: 0.2)")
+    parser.add_argument("--lr", type=float, default=0.0027324691985734575,
+                        help="Learning rate (default: 0.0027324691985734575)")
+    parser.add_argument("--weight_decay", type=float, default=3.47e-06,
+                        help="Weight decay (default: 3.5e-06)")
+    parser.add_argument("--hidden_dim", type=int, default=512,
+                        help="Hidden dimension size (default: 512)") 
+    parser.add_argument("--num_layers", type=int, default=3, 
+                        help="Number of GIN layers (default: 3)")
+    parser.add_argument("--dropout", type=float, default=0.6, 
+                        help="Dropout rate (default: 0.6)")
     parser.add_argument("--factor", type=float, default=0.5,
                         help="Factor for learning rate scheduler (default: 0.5)")
     parser.add_argument("--patience", type=int, default=3,
