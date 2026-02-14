@@ -88,16 +88,37 @@ if __name__ == "__main__":
 
     # train_loss, train_acc, train_f1, val_acc, val_f1
     best_model_stats = [0.0, 0.0, 0.0, 0.0, 0.0]
+    training_history = []
+    patience = 15
+    patience_counter = 0
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train()
         train_acc, train_f1 = test(train_loader)
         val_acc, val_f1 = test(val_loader)
         scheduler.step(val_acc)
+        
+        training_history.append({
+                    "epoch": epoch,
+                    "train_loss": train_loss,
+                    "train_acc": train_acc,
+                    "train_f1": train_f1,
+                    "val_acc": val_acc,
+                    "val_f1": val_f1,
+                    "learning_rate": optimizer.param_groups[0]['lr']   
+        })
 
         if val_acc > best_model_stats[3]:
             best_model_stats = [train_loss,
                                 train_acc, train_f1, val_acc, val_f1]
+            patience_counter = 0
+            torch.save(model.state_dict(), "results/best_model.pt")
+        else:
+            patience_counter += 1
+
+        if patience_counter >= patience:
+            print(f"Early stopping at epoch {epoch}.")
+            break
 
         print(f"Epoch {epoch:02d} | "
               f"Train Loss: {train_loss:.4f} | "
@@ -107,7 +128,9 @@ if __name__ == "__main__":
               f"Val F1:    {val_f1:.4f}")
 
 
-    torch.save(model.state_dict(), "results/best_model.pt")
+    history_df = pd.DataFrame(training_history)
+    history_df.to_csv("results/training_history.csv", index=False)
+
     print("================================\n")
     print("Best Model Stats:")
     print(f"Train Loss: {best_model_stats[0]:.4f} | "
