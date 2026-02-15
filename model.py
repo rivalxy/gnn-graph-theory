@@ -11,7 +11,7 @@ class GIN(nn.Module):
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
 
-        for _ in range(num_layers - 1):
+        for _ in range(num_layers):
             self.convs.append(
                 GINConv(nn.Sequential(
                     nn.Linear(input_dim, 2 * hidden_dim),
@@ -34,4 +34,5 @@ class GIN(nn.Module):
             x = F.dropout(x, self.dropout, training=self.training)
         x = global_add_pool(x, batch)
         x = F.relu(self.batch_norm1(self.lin1(x)))
+        x = F.dropout(x, self.dropout, training=self.training)
         return self.classifier(x).view(-1)
