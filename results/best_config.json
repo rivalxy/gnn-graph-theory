@@ -1,6 +1,6 @@
 {
     "hidden_dim": 512,
-    "num_layers": 3,
+    "num_layers": 2,
     "dropout": 0.0613320540891726,
     "lr": 0.0027324691985734575,
     "weight_decay": 3.473678444686799e-06,
