@@ -50,20 +50,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GIN for partial automorphism extension problem")
     parser.add_argument("--seed", type=int, default=42, 
                         help="Random seed for reproducibility (default: 42)") 
-    parser.add_argument("--batch_size", type=int, default=128,
-                        help="Input batch size (default: 128)")
+    parser.add_argument("--batch_size", type=int, default=64,
+                        help="Input batch size (default: 64)")
     parser.add_argument("--epochs", type=int, default=100,
                         help="Number of epochs to train (default: 100)")
-    parser.add_argument("--lr", type=float, default=0.0027324691985734575,
-                        help="Learning rate (default: 0.0027324691985734575)")
-    parser.add_argument("--weight_decay", type=float, default=3.473678444686799e-06,
-                        help="Weight decay (default: 3.473678444686799e-06)")
-    parser.add_argument("--hidden_dim", type=int, default=512,
-                        help="Hidden dimension size (default: 512)") 
+    parser.add_argument("--lr", type=float, default=0.0008007016085176578,
+                        help="Learning rate (default: 0.0008007016085176578)")
+    parser.add_argument("--weight_decay", type=float, default=1.5408221478908417e-05,
+                        help="Weight decay (default: 1.5408221478908417e-05)")
+    parser.add_argument("--hidden_dim", type=int, default=256,
+                        help="Hidden dimension size (default: 256)") 
     parser.add_argument("--num_layers", type=int, default=2, 
                         help="Number of GIN layers (default: 2)")
-    parser.add_argument("--dropout", type=float, default=0.0613320540891726, 
-                        help="Dropout rate (default: 0.0613320540891726)")
+    parser.add_argument("--dropout", type=float, default=0.04821922755593036, 
+                        help="Dropout rate (default: 0.04821922755593036)")
     parser.add_argument("--factor", type=float, default=0.5,
                         help="Factor for learning rate scheduler (default: 0.5)")
     parser.add_argument("--patience", type=int, default=3,
