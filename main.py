@@ -56,14 +56,14 @@ if __name__ == "__main__":
                         help="Number of epochs to train (default: 100)")
     parser.add_argument("--lr", type=float, default=0.0027324691985734575,
                         help="Learning rate (default: 0.0027324691985734575)")
-    parser.add_argument("--weight_decay", type=float, default=3.47e-06,
-                        help="Weight decay (default: 3.5e-06)")
+    parser.add_argument("--weight_decay", type=float, default=3.473678444686799e-06,
+                        help="Weight decay (default: 3.473678444686799e-06)")
     parser.add_argument("--hidden_dim", type=int, default=512,
                         help="Hidden dimension size (default: 512)") 
-    parser.add_argument("--num_layers", type=int, default=3, 
-                        help="Number of GIN layers (default: 3)")
-    parser.add_argument("--dropout", type=float, default=0.6, 
-                        help="Dropout rate (default: 0.6)")
+    parser.add_argument("--num_layers", type=int, default=2, 
+                        help="Number of GIN layers (default: 2)")
+    parser.add_argument("--dropout", type=float, default=0.0613320540891726, 
+                        help="Dropout rate (default: 0.0613320540891726)")
     parser.add_argument("--factor", type=float, default=0.5,
                         help="Factor for learning rate scheduler (default: 0.5)")
     parser.add_argument("--patience", type=int, default=3,
