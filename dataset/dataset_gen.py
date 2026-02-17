@@ -224,17 +224,17 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str) -> lis
 
 
 if __name__ == "__main__":
-    positive_graphs = read_graphs_from_g6("dataset/positive_graphs.g6")
+    positive_graphs = read_graphs_from_g6("positive_graphs.g6")
     graphs_train, graphs_val = train_test_split(positive_graphs, test_size=0.2)
 
     train_dataset = generate_paut_dataset(graphs_train, dataset_type="train")
     val_dataset = generate_paut_dataset(graphs_val, dataset_type="val")
 
-    torch.save(train_dataset, "dataset/train_dataset.pt")
-    torch.save(val_dataset, "dataset/val_dataset.pt")
+    torch.save(train_dataset, "train_dataset.pt")
+    torch.save(val_dataset, "val_dataset.pt")
 
     paut_sizes_to_csv(
-        paut_sizes, f"dataset/partial_automorphism_sizes.csv")
+        paut_sizes, f"partial_automorphism_sizes.csv")
 
     print(
         f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")
