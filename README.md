@@ -6,23 +6,11 @@ This repository contains the code, experiments, and validation statistics for my
 
 The project uses a dataset of graphs with high automorphism group sizes, generates partial automorphisms, and trains a GNN classifier to predict extendability. The goal is to explore the learnability of graph symmetries and the structural patterns that guide automorphism extension.
 
-## Validation Statistics
-
-This section stores training and validation metrics tracked during model development. Additional tables or plots may be added as the experiments evolve.
-
-### Example Metrics
-
-```text
-Epoch 03 | Train Loss: 0.4675 | Train Acc: 0.7771 | Train F1: 0.7730 | Val Acc: 0.7680 | Val F1: 0.7647
-Epoch 04 | Train Loss: 0.4437 | Train Acc: 0.7842 | Train F1: 0.7948 | Val Acc: 0.7768 | Val F1: ...
-```
-
-More detailed logs will be appended as experiments continue.
-
 ## Repository Structure
 
 * **/dataset/** — Graph datasets and generated partial automorphisms.
-* **/models/** — GNN architectures, training scripts, and saved weights.
+* **/kaggle/** - Notebooks used for training on kaggle.com
+* **/results/** - Optuna search history and training history along with the best model weights saved as pytorch file.
 
 ## Thesis Context
 
