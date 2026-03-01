@@ -1,5 +1,6 @@
 import random
 import torch
+import math
 
 from pynauty import Graph, autgrp
 from sklearn.model_selection import train_test_split
@@ -27,7 +28,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
         if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
-        p_aut_size = random.randint(num_of_nodes // 2, 4 * num_of_nodes // 5)
+        p_aut_size = random.randint(math.ceil(num_of_nodes / 2), 4 * num_of_nodes // 5)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -57,7 +58,7 @@ def negatives_blocking(group: PermutationGroup,
         if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
-        p_aut_size = random.randint(num_of_nodes // 2, maximum_size)
+        p_aut_size = random.randint(math.ceil(num_of_nodes / 2), maximum_size)
         p_aut_size -= 1
         original_paut_size = p_aut_size
         domain = random.sample(nodes, p_aut_size)
@@ -189,7 +190,7 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str) -> lis
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
         group_size = grpsize1 * 10**grpsize2
 
-        # ensure up to 10 examples per graph with 1:1 ratio of positive to negative examples
+        # ensure up to 40 examples per graph with 1:1 ratio of positive to negative examples
         examples_num = int(min(MAX_EXAMPLES_NUM, group_size))
         generators = [Permutation(g) for g in generators_raw]
         group = PermutationGroup(generators)
