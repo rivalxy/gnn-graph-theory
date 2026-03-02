@@ -7,12 +7,12 @@ from pynauty import Graph, autgrp
 from collections import defaultdict
 
 
-def build_adjacency_list(edge_list: list[tuple]) -> defaultdict[int, set]:
-    adjacency_list = defaultdict(set)
+def build_adjacency_dict(edge_list: list[tuple]) -> defaultdict[int, set]:
+    adjacency_dict = defaultdict(set)
     for u, v in edge_list:
-        adjacency_list[u].add(v)
-        adjacency_list[v].add(u)
-    return adjacency_list
+        adjacency_dict[u].add(v)
+        adjacency_dict[v].add(u)
+    return adjacency_dict
 
 
 def read_graphs_from_g6(file_path: str) -> list[Graph]:
@@ -27,15 +27,15 @@ def read_graphs_from_g6(file_path: str) -> list[Graph]:
     pynauty_graphs = []
     for graph in graphs:
         num_of_nodes = int(graph.number_of_nodes())
-        adjacency_list = build_adjacency_list(graph.edges())
+        adjacency_dict = build_adjacency_dict(graph.edges())
         pynauty_graph = Graph(num_of_nodes)
-        pynauty_graph.set_adjacency_dict(adjacency_list)
+        pynauty_graph.set_adjacency_dict(adjacency_dict)
         pynauty_graphs.append(
-            (pynauty_graph, num_of_nodes, adjacency_list))
+            (pynauty_graph, num_of_nodes, adjacency_dict))
     return pynauty_graphs
 
 
-def is_paut(adjacency_list: dict[int, set], mapping: dict[int, int]) -> bool:
+def is_paut(adjacency_dict: dict[int, set], mapping: dict[int, int]) -> bool:
     """
     Check if mapping is a partial automorphism on given graph.
     """
@@ -49,7 +49,7 @@ def is_paut(adjacency_list: dict[int, set], mapping: dict[int, int]) -> bool:
         for v in domain[i+1:]:
             u_mapped = mapping[u]
             v_mapped = mapping[v]
-            if (v in adjacency_list.get(u, set())) != (v_mapped in adjacency_list.get(u_mapped, set())):
+            if (v in adjacency_dict.get(u, set())) != (v_mapped in adjacency_dict.get(u_mapped, set())):
                 return False
     return True
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     test_graph = nx.Graph()
     test_graph.add_edges_from(
         [(0, 1), (1, 2), (2, 3), (3, 4), (2, 4), (4, 5), (5, 6)])
-    test_adjacency_list = build_adjacency_list(test_graph.edges())
+    test_adjacency_dict = build_adjacency_dict(test_graph.edges())
     positive_mappings = [{0: 0, 1: 1, 2: 2},
                          {0: 0, 1: 1, 4: 4}]
     negative_mappings = [{0: 2, 1: 1, 2: 0},
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     num_of_nodes = int(test_graph.number_of_nodes())
     pynauty_graph = Graph(num_of_nodes)
-    pynauty_graph.set_adjacency_dict(test_adjacency_list)
+    pynauty_graph.set_adjacency_dict(test_adjacency_dict)
 
     generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
     group_size = grpsize1 * 10**grpsize2
@@ -95,9 +95,9 @@ if __name__ == "__main__":
     group = PermutationGroup(generators)
 
     for mapping in positive_mappings:
-        assert is_paut(test_adjacency_list, mapping)
+        assert is_paut(test_adjacency_dict, mapping)
         assert is_extensible(group, mapping)
     for mapping in negative_mappings:
-        assert is_paut(test_adjacency_list, mapping)
+        assert is_paut(test_adjacency_dict, mapping)
         assert not is_extensible(group, mapping)
     print("All tests passed.")
