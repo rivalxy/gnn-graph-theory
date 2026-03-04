@@ -4,7 +4,7 @@ This repository contains the code, experiments, and validation statistics for my
 
 ## Overview
 
-The project uses a dataset of graphs with high automorphism group sizes, generates partial automorphisms, and trains a GNN classifier to predict extendability. The goal is to explore the learnability of graph symmetries and the structural patterns that guide automorphism extension.
+The project uses a dataset of graphs with high automorphism group sizes, generates partial automorphisms, and trains a GNN classifier to predict extendibility. The goal is to explore the learnability of graph symmetries and the structural patterns that guide automorphism extension.
 
 ## Repository Structure
 
