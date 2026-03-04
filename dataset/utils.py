@@ -72,6 +72,7 @@ def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
 
     :param group: The automorphism group of the graph.
     :param mapping: A partial mapping from node indices to node indices.
+    Indices must be contiguous non-negative integers matching the pynauty graph representation.
     :returns: True if the mapping can be extended to a full automorphism, False otherwise.
     """
 
