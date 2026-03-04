@@ -1,4 +1,5 @@
 import argparse
+import json
 import torch
 import torch.nn as nn
 import torch_geometric
@@ -6,7 +7,7 @@ import pandas as pd
 
 from torch_geometric.loader import DataLoader
 from sklearn import metrics
-from model import GIN
+from models import GIN
 
 
 def train():
@@ -37,6 +38,7 @@ def test(loader):
         data = data.to(device)
         out = model(data)
         pred = (out > 0).float()
+
         predictions.append(pred.cpu())
         labels.append(data.y.cpu())
 
@@ -48,26 +50,36 @@ def test(loader):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GIN for partial automorphism extension problem")
-    parser.add_argument("--seed", type=int, default=42, 
+    parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for reproducibility (default: 42)") 
-    parser.add_argument("--batch_size", type=int, default=64,
-                        help="Input batch size (default: 64)")
-    parser.add_argument("--epochs", type=int, default=100,
-                        help="Number of epochs to train (default: 100)")
-    parser.add_argument("--lr", type=float, default=0.0008007016085176578,
-                        help="Learning rate (default: 0.0008007016085176578)")
-    parser.add_argument("--weight_decay", type=float, default=1.5408221478908417e-05,
-                        help="Weight decay (default: 1.5408221478908417e-05)")
-    parser.add_argument("--hidden_dim", type=int, default=256,
-                        help="Hidden dimension size (default: 256)") 
-    parser.add_argument("--num_layers", type=int, default=2, 
-                        help="Number of GIN layers (default: 2)")
-    parser.add_argument("--dropout", type=float, default=0.04821922755593036, 
-                        help="Dropout rate (default: 0.04821922755593036)")
-    parser.add_argument("--factor", type=float, default=0.5,
-                        help="Factor for learning rate scheduler (default: 0.5)")
-    parser.add_argument("--patience", type=int, default=3,
-                        help="Patience for learning rate scheduler (default: 3)")
+    parser.add_argument("--config", type=str, default="results/baseline/config.json",
+                        help="Use config file for hyperparameters")
+    parser.add_argument("--hidden_dim", type=int,
+                        help="Hidden dimension size") 
+    parser.add_argument("--num_layers", type=int, 
+                        help="Number of GIN layers")
+    parser.add_argument("--dropout", type=float, 
+                        help="Dropout rate")
+    parser.add_argument("--lr", type=float,
+                        help="Learning rate")
+    parser.add_argument("--weight_decay", type=float,
+                        help="Weight decay")
+    parser.add_argument("--batch_size", type=int,
+                        help="Input batch size")
+    parser.add_argument("--factor", type=float,
+                        help="Factor for learning rate scheduler")
+    parser.add_argument("--patience", type=int,
+                        help="Patience for learning rate scheduler")
+    parser.add_argument("--epochs", type=int,
+                        help="Number of epochs to train")
+
+    args, remaining_argv = parser.parse_known_args()
+
+    if args.config:
+        with open(args.config, "r") as f:
+            config_dict = json.load(f)
+        parser.set_defaults(**config_dict)
+
     args = parser.parse_args()
 
     torch_geometric.seed_everything(args.seed)
@@ -75,11 +87,13 @@ if __name__ == "__main__":
     train_dataset = torch.load("dataset/train_dataset.pt", weights_only=False)
     val_dataset = torch.load("dataset/val_dataset.pt", weights_only=False)
 
+    number_of_features = train_dataset[0].num_node_features
+
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = GIN(3, args.hidden_dim, args.num_layers, args.dropout).to(device)
+    model = GIN(number_of_features, args.hidden_dim, args.num_layers, args.dropout).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
