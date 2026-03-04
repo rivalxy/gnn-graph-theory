@@ -12,7 +12,7 @@ from torch_geometric.utils import to_networkx
 from sympy.combinatorics import Permutation, PermutationGroup
 from collections import defaultdict
 
-from utils import is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
+from utils import PautStats, is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
 
 MAX_ATTEMPTS = 100
 
@@ -205,12 +205,12 @@ def make_pyg_data(tensor_edge_index: torch.Tensor, num_of_nodes: int,  mapping: 
     return data
 
 
-def build_edge_index(adjacency_list: dict[int, set]) -> torch.Tensor:
-    if len(adjacency_list) == 0:
+def build_edge_index(adjacency_dict: dict[int, set]) -> torch.Tensor:
+    if len(adjacency_dict) == 0:
         return torch.empty((2, 0), dtype=torch.long)
 
     edges = []
-    for u, neighbors in adjacency_list.items():
+    for u, neighbors in adjacency_dict.items():
         for v in neighbors:
             edges.append([u, v])
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
@@ -230,7 +230,10 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str, config
     positive_pyg_data = []
     negative_pyg_data = []
 
-    for pynauty_graph, num_of_nodes, adjacency_list in pynauty_graphs:
+    for graph_data in pynauty_graphs:
+        pynauty_graph = graph_data.graph
+        num_of_nodes = graph_data.num_of_nodes
+        adjacency_dict = graph_data.adjacency_dict
         generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
         group_size = grpsize1 * 10**grpsize2
 
@@ -239,28 +242,28 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str, config
         generators = [Permutation(g) for g in generators_raw]
         group = PermutationGroup(generators)
 
-        tensor_edge_index = build_edge_index(adjacency_list)
+        tensor_edge_index = build_edge_index(adjacency_dict)
 
         positives = gen_positive_examples(
             group, num_of_nodes, examples_num)
 
         for mapping, p_aut_size in positives:
-            assert is_paut(adjacency_list, mapping)
+            assert is_paut(adjacency_dict, mapping)
             assert is_extensible(group, mapping)
 
-            paut_sizes[num_of_nodes].append((p_aut_size, 0, dataset_type))
+            paut_sizes[num_of_nodes].append(PautStats(p_aut_size, 0, dataset_type))
             positive_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=1, extra_features=EXTRA_FEATURES))
 
         negatives = gen_negative_examples(
-            group, examples_num, num_of_nodes, adjacency_list)
+            group, examples_num, num_of_nodes, adjacency_dict)
 
         for mapping, original_paut_size, extension_size in negatives:
-            assert is_paut(adjacency_list, mapping)
+            assert is_paut(adjacency_dict, mapping)
             assert not is_extensible(group, mapping)
 
             paut_sizes[num_of_nodes].append(
-                (original_paut_size, extension_size, dataset_type))
+                PautStats(original_paut_size, extension_size, dataset_type))
             negative_pyg_data.append(make_pyg_data(
                 tensor_edge_index, num_of_nodes, mapping, label=0, extra_features=EXTRA_FEATURES))
 
