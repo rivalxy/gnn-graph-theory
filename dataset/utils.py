@@ -1,13 +1,14 @@
+from dataclasses import dataclass
+from enum import StrEnum
 import networkx as nx
 import csv
+import pynauty
 
-from pynauty import Graph
-from sympy.combinatorics import Permutation, PermutationGroup
-from pynauty import Graph, autgrp
+from sympy.combinatorics import PermutationGroup
 from collections import defaultdict
 
 
-def build_adjacency_dict(edge_list: list[tuple]) -> defaultdict[int, set]:
+def _build_adjacency_dict(edge_list: list[tuple]) -> defaultdict[int, set]:
     adjacency_dict = defaultdict(set)
     for u, v in edge_list:
         adjacency_dict[u].add(v)
@@ -15,29 +16,40 @@ def build_adjacency_dict(edge_list: list[tuple]) -> defaultdict[int, set]:
     return adjacency_dict
 
 
-def read_graphs_from_g6(file_path: str) -> list[Graph]:
+@dataclass
+class GraphData:
+    graph: pynauty.Graph
+    num_of_nodes: int
+    adjacency_dict: dict[int, set]
+
+
+def read_graphs_from_g6(file_path: str) -> list[GraphData]:
     """
     Reads graphs from a .g6 file and converts them to pynauty format.
 
     :param file_path: Path to the .g6 file.
-    :returns: List of pynauty graphs with their number of nodes and edges.
+    :returns: List of GraphData objects containing the pynauty graph, number of nodes, and adjacency dictionary.
     """
 
-    graphs = nx.read_graph6(file_path)
+    graphs: list[nx.Graph] = nx.read_graph6(file_path)
     pynauty_graphs = []
     for graph in graphs:
-        num_of_nodes = int(graph.number_of_nodes())
-        adjacency_dict = build_adjacency_dict(graph.edges())
-        pynauty_graph = Graph(num_of_nodes)
+        num_of_nodes = graph.number_of_nodes()
+        adjacency_dict = _build_adjacency_dict(graph.edges())
+        pynauty_graph = pynauty.Graph(num_of_nodes)
         pynauty_graph.set_adjacency_dict(adjacency_dict)
         pynauty_graphs.append(
-            (pynauty_graph, num_of_nodes, adjacency_dict))
+            GraphData(pynauty_graph, num_of_nodes, adjacency_dict))
     return pynauty_graphs
 
 
 def is_paut(adjacency_dict: dict[int, set], mapping: dict[int, int]) -> bool:
     """
     Check if mapping is a partial automorphism on given graph.
+
+    :param adjacency_dict: Adjacency dictionary of the graph.
+    :param mapping: A partial mapping from node indices to node indices.
+    :returns: True if the mapping is a partial automorphism, False otherwise.
     """
 
     # Check injectivity
@@ -57,7 +69,12 @@ def is_paut(adjacency_dict: dict[int, set], mapping: dict[int, int]) -> bool:
 def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
     """
     Check if mapping can be extended to a full automorphism on given graph.
+
+    :param group: The automorphism group of the graph.
+    :param mapping: A partial mapping from node indices to node indices.
+    :returns: True if the mapping can be extended to a full automorphism, False otherwise.
     """
+
     domain = set(mapping.keys())
     for perm in group.generate():
         if all(perm.array_form[i] == mapping[i] for i in domain):
@@ -65,39 +82,30 @@ def is_extensible(group: PermutationGroup, mapping: dict[int, int]) -> bool:
     return False
 
 
-def paut_sizes_to_csv(examples: dict[int, list[tuple]], file_path: str):
+class DatasetType(StrEnum):
+    TRAIN = "train"
+    VAL = "val"
+
+
+@dataclass
+class PautStats:
+    original_paut_size: int
+    extension_size: int
+    dataset_type: DatasetType
+
+
+def paut_sizes_to_csv(stats_by_node_count: dict[int, list[PautStats]], file_path: str) -> None:
+    """
+    Writes PautStats grouped by node count to a CSV file.
+
+    :param stats_by_node_count: Dictionary mapping number of nodes to a list of PautStats.
+    :param file_path: Path to the output CSV file.
+    """
     with open(file_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['num_of_nodes', 'original_paut_size', 'extension_size', 'dataset_type'])
-        for num_of_nodes, stats in examples.items():
-            for original_paut_size, extension_size, example_type in stats:
-                writer.writerow([num_of_nodes, original_paut_size, extension_size, example_type])
-
-
-if __name__ == "__main__":
-    test_graph = nx.Graph()
-    test_graph.add_edges_from(
-        [(0, 1), (1, 2), (2, 3), (3, 4), (2, 4), (4, 5), (5, 6)])
-    test_adjacency_dict = build_adjacency_dict(test_graph.edges())
-    positive_mappings = [{0: 0, 1: 1, 2: 2},
-                         {0: 0, 1: 1, 4: 4}]
-    negative_mappings = [{0: 2, 1: 1, 2: 0},
-                         {0: 0, 1: 1, 2: 2, 3: 4, 4: 3},
-                         ]
-
-    num_of_nodes = int(test_graph.number_of_nodes())
-    pynauty_graph = Graph(num_of_nodes)
-    pynauty_graph.set_adjacency_dict(test_adjacency_dict)
-
-    generators_raw, grpsize1, grpsize2, _, _ = autgrp(pynauty_graph)
-    group_size = grpsize1 * 10**grpsize2
-    generators = [Permutation(g) for g in generators_raw]
-    group = PermutationGroup(generators)
-
-    for mapping in positive_mappings:
-        assert is_paut(test_adjacency_dict, mapping)
-        assert is_extensible(group, mapping)
-    for mapping in negative_mappings:
-        assert is_paut(test_adjacency_dict, mapping)
-        assert not is_extensible(group, mapping)
-    print("All tests passed.")
+        writer.writerow(['num_of_nodes', 'original_paut_size',
+                        'extension_size', 'dataset_type'])
+        for num_of_nodes, stats in stats_by_node_count.items():
+            for stat in stats:
+                writer.writerow(
+                    [num_of_nodes, stat.original_paut_size, stat.extension_size, stat.dataset_type])
