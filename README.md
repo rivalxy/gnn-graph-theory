@@ -8,7 +8,7 @@ The project uses a dataset of graphs with high automorphism group sizes, generat
 
 ## Repository Structure
 
-* **/dataset/** — Graph datasets and generated partial automorphisms.
+* **/dataset/** - Graph datasets and generated partial automorphisms.
 * **/kaggle/** - Notebooks used for training on kaggle.com
 * **/results/** - Optuna search history and training history along with the best model weights saved as pytorch file.
 
