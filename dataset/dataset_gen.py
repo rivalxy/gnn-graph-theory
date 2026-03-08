@@ -12,12 +12,20 @@ from torch_geometric.utils import to_networkx
 from sympy.combinatorics import Permutation, PermutationGroup
 from collections import defaultdict
 
-from utils import PautStats, is_paut, is_extensible, read_graphs_from_g6, paut_sizes_to_csv
+from utils import (
+    PautStats,
+    is_paut,
+    is_extensible,
+    read_graphs_from_g6,
+    paut_sizes_to_csv,
+)
 
 MAX_ATTEMPTS = 100
 
 
-def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_num: int) -> list:
+def gen_positive_examples(
+    group: PermutationGroup, num_of_nodes: int, examples_num: int
+) -> list:
     seen_positives = set()
     positives = []
     attempts = 0
@@ -29,8 +37,7 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
         if all(i == p for i, p in enumerate(perm)):
             continue  # skip trivial case
 
-        p_aut_size = random.randint(
-            math.ceil(num_of_nodes / 2), 4 * num_of_nodes // 5)
+        p_aut_size = random.randint(math.ceil(num_of_nodes / 2), 4 * num_of_nodes // 5)
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -43,11 +50,12 @@ def gen_positive_examples(group: PermutationGroup, num_of_nodes: int, examples_n
     return positives
 
 
-def negatives_blocking(group: PermutationGroup,
-                       examples_num: int,
-                       num_of_nodes: int,
-                       adjacency_list: dict[int, set]
-                       ) -> list:
+def negatives_blocking(
+    group: PermutationGroup,
+    examples_num: int,
+    num_of_nodes: int,
+    adjacency_list: dict[int, set],
+) -> list:
     negatives = []
     seen_negatives = set()
     attempts = 0
@@ -73,8 +81,7 @@ def negatives_blocking(group: PermutationGroup,
 
         while current_extension < extension_size and extension_attempts < MAX_ATTEMPTS:
             extension_attempts += 1
-            new_mapping = block_automorphism(
-                mapping, num_of_nodes, adjacency_list)
+            new_mapping = block_automorphism(mapping, num_of_nodes, adjacency_list)
 
             if new_mapping is None:
                 break
@@ -93,13 +100,12 @@ def negatives_blocking(group: PermutationGroup,
             continue
 
         seen_negatives.add(key)
-        negatives.append(
-            (mapping, original_paut_size, current_extension))
+        negatives.append((mapping, original_paut_size, current_extension))
 
     return negatives
 
 
-def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
+def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> None | dict:
     nodes = list(range(num_of_nodes))
 
     unmapped_nodes = [n for n in nodes if n not in positive]
@@ -111,10 +117,10 @@ def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
     random.shuffle(unmapped_nodes)
     random.shuffle(targets)
 
-    for node in unmapped_nodes[:min(5, len(unmapped_nodes))]:
+    for node in unmapped_nodes[: min(5, len(unmapped_nodes))]:
         node_neighbors = adj.get(node, set())
 
-        for target in targets[:min(5, len(targets))]:
+        for target in targets[: min(5, len(targets))]:
             target_neighbors = adj.get(target, set())
 
             test_map = positive.copy()
@@ -134,40 +140,54 @@ def block_automorphism(positive: dict, num_of_nodes: int, adj: dict) -> dict:
 
 
 # TODO
-def gen_negative_examples(group: PermutationGroup,
-                          examples_num: int,
-                          num_of_nodes: int,
-                          adjacency_list: dict[int, set]
-                          ) -> list:
+def gen_negative_examples(
+    group: PermutationGroup,
+    examples_num: int,
+    num_of_nodes: int,
+    adjacency_list: dict[int, set],
+) -> list:
 
-    negatives = negatives_blocking(
-        group, examples_num, num_of_nodes, adjacency_list)
+    negatives = negatives_blocking(group, examples_num, num_of_nodes, adjacency_list)
 
     return negatives
 
 
-def make_pyg_data(tensor_edge_index: torch.Tensor, num_of_nodes: int,  mapping: dict[int, int], label: int, extra_features: bool) -> Data:
+def make_pyg_data(
+    tensor_edge_index: torch.Tensor,
+    num_of_nodes: int,
+    mapping: dict[int, int],
+    label: int,
+    extra_features: bool,
+) -> Data:
     if extra_features:
         x = torch.full((num_of_nodes, 7), -1.0, dtype=torch.float)
         data = Data(edge_index=tensor_edge_index, num_nodes=num_of_nodes)
         G = to_networkx(data, to_undirected=True)
 
         # Add normalized degree as a feature
-        degrees = torch.tensor([G.degree(node)
-                               for node in range(num_of_nodes)], dtype=torch.float)
-        max_degree = degrees.max().item() if degrees.numel() > 0 and degrees.max() > 0 else 1.0
+        degrees = torch.tensor(
+            [G.degree(node) for node in range(num_of_nodes)], dtype=torch.float
+        )
+        max_degree = (
+            degrees.max().item() if degrees.numel() > 0 and degrees.max() > 0 else 1.0
+        )
         x[:, 3] = degrees / max_degree
 
         # Add clustering coefficient as a feature
         clustering_coeffs = torch.tensor(
-            [nx.clustering(G, node) for node in range(num_of_nodes)], dtype=torch.float)
+            [nx.clustering(G, node) for node in range(num_of_nodes)], dtype=torch.float
+        )
         x[:, 4] = clustering_coeffs
 
         # Add a normalized triangle count
         triangle_counts = torch.tensor(
-            [nx.triangles(G, node) for node in range(num_of_nodes)], dtype=torch.float)
-        max_triangles = triangle_counts.max().item() if triangle_counts.numel(
-        ) > 0 and triangle_counts.max() > 0 else 1.0
+            [nx.triangles(G, node) for node in range(num_of_nodes)], dtype=torch.float
+        )
+        max_triangles = (
+            triangle_counts.max().item()
+            if triangle_counts.numel() > 0 and triangle_counts.max() > 0
+            else 1.0
+        )
         x[:, 5] = triangle_counts / max_triangles
 
         # Add average neighbor degree
@@ -180,10 +200,12 @@ def make_pyg_data(tensor_edge_index: torch.Tensor, num_of_nodes: int,  mapping: 
                 avg_degree = 0.0
             avg_neighbor_degrees.append(avg_degree)
 
-        avg_neighbor_degrees = torch.tensor(
-            avg_neighbor_degrees, dtype=torch.float)
-        max_avg = avg_neighbor_degrees.max().item() if avg_neighbor_degrees.numel(
-        ) > 0 and avg_neighbor_degrees.max() > 0 else 1.0
+        avg_neighbor_degrees = torch.tensor(avg_neighbor_degrees, dtype=torch.float)
+        max_avg = (
+            avg_neighbor_degrees.max().item()
+            if avg_neighbor_degrees.numel() > 0 and avg_neighbor_degrees.max() > 0
+            else 1.0
+        )
         norm_avg_neigh = avg_neighbor_degrees / max_avg
         x[:, 6] = norm_avg_neigh
 
@@ -217,7 +239,9 @@ def build_edge_index(adjacency_dict: dict[int, set]) -> torch.Tensor:
     return edge_index
 
 
-def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str, config: tuple[int, bool]) -> list:
+def generate_paut_dataset(
+    pynauty_graphs: list[Graph], dataset_type: str, config: tuple[int, bool]
+) -> list:
     """
     Generates partial automorphism mappings with their labels from a list of pynauty graphs.
 
@@ -244,28 +268,43 @@ def generate_paut_dataset(pynauty_graphs: list[Graph], dataset_type: str, config
 
         tensor_edge_index = build_edge_index(adjacency_dict)
 
-        positives = gen_positive_examples(
-            group, num_of_nodes, examples_num)
+        positives = gen_positive_examples(group, num_of_nodes, examples_num)
 
         for mapping, p_aut_size in positives:
             assert is_paut(adjacency_dict, mapping)
             assert is_extensible(group, mapping)
 
             paut_sizes[num_of_nodes].append(PautStats(p_aut_size, 0, dataset_type))
-            positive_pyg_data.append(make_pyg_data(
-                tensor_edge_index, num_of_nodes, mapping, label=1, extra_features=EXTRA_FEATURES))
+            positive_pyg_data.append(
+                make_pyg_data(
+                    tensor_edge_index,
+                    num_of_nodes,
+                    mapping,
+                    label=1,
+                    extra_features=EXTRA_FEATURES,
+                )
+            )
 
         negatives = gen_negative_examples(
-            group, examples_num, num_of_nodes, adjacency_dict)
+            group, examples_num, num_of_nodes, adjacency_dict
+        )
 
         for mapping, original_paut_size, extension_size in negatives:
             assert is_paut(adjacency_dict, mapping)
             assert not is_extensible(group, mapping)
 
             paut_sizes[num_of_nodes].append(
-                PautStats(original_paut_size, extension_size, dataset_type))
-            negative_pyg_data.append(make_pyg_data(
-                tensor_edge_index, num_of_nodes, mapping, label=0, extra_features=EXTRA_FEATURES))
+                PautStats(original_paut_size, extension_size, dataset_type)
+            )
+            negative_pyg_data.append(
+                make_pyg_data(
+                    tensor_edge_index,
+                    num_of_nodes,
+                    mapping,
+                    label=0,
+                    extra_features=EXTRA_FEATURES,
+                )
+            )
 
     dataset = positive_pyg_data + negative_pyg_data
     return dataset
@@ -275,7 +314,7 @@ if __name__ == "__main__":
     configurations = {
         "baseline": (10, False),
         "7_features": (10, True),
-        "larger": (20, False)
+        "larger": (20, False),
     }
 
     positive_graphs = read_graphs_from_g6("positive_graphs.g6")
@@ -287,25 +326,24 @@ if __name__ == "__main__":
         paut_sizes = defaultdict(list)
 
         train_dataset = generate_paut_dataset(
-            graphs_train, dataset_type="train", config=config)
+            graphs_train, dataset_type="train", config=config
+        )
         val_dataset = generate_paut_dataset(
-            graphs_val, dataset_type="val", config=config)
+            graphs_val, dataset_type="val", config=config
+        )
 
         if config_name == "larger":
-            torch.save(train_dataset, f"train_dataset.pt")
-            torch.save(val_dataset, f"val_dataset.pt")
+            torch.save(train_dataset, "train_dataset.pt")
+            torch.save(val_dataset, "val_dataset.pt")
 
-            paut_sizes_to_csv(
-                paut_sizes, f"paut_sizes.csv")
+            paut_sizes_to_csv(paut_sizes, "paut_sizes.csv")
         else:
             os.makedirs(config_name, exist_ok=True)
-            torch.save(train_dataset,
-                       f"{config_name}/train_dataset_{config_name}.pt")
-            torch.save(
-                val_dataset, f"{config_name}/val_dataset_{config_name}.pt")
+            torch.save(train_dataset, f"{config_name}/train_dataset_{config_name}.pt")
+            torch.save(val_dataset, f"{config_name}/val_dataset_{config_name}.pt")
 
-            paut_sizes_to_csv(
-                paut_sizes, f"{config_name}/paut_sizes_{config_name}.csv")
+            paut_sizes_to_csv(paut_sizes, f"{config_name}/paut_sizes_{config_name}.csv")
 
         print(
-            f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples.")
+            f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples."
+        )
