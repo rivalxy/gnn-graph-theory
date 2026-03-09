@@ -21,7 +21,8 @@ def test_read_graphs_from_g6():
     ({0: 3, 1: 1, 2: 4}, False),
     ({0: 1, 5: 6}, True),
     ({0: 1, 1: 0, 5: 6, 6: 5}, True),
-    ({0: 5, 1: 1, 2: 2, 3: 3, 4: 4, 5: 0}, False)
+    ({0: 5, 1: 1, 2: 2, 3: 3, 4: 4, 5: 0}, False),
+    (dict(), False)
 ])
 def test_is_paut(mapping, expected):
     adjacency_dict = {0: {1}, 1: {0, 2}, 2: {1, 3, 4},
