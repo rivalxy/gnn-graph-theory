@@ -2,12 +2,23 @@ import math
 import random
 
 import networkx as nx
-from utils import AdjacencyDict, Edge, GraphData, Mapping, build_adjacency_dict, is_paut
+import pynauty
+from sympy.combinatorics import Permutation, PermutationGroup
+from utils import (
+    AdjacencyDict,
+    Edge,
+    GraphData,
+    Mapping,
+    build_adjacency_dict,
+    is_extensible,
+    is_paut,
+    read_graphs_from_g6,
+)
 
 MAX_ATTEMPTS = 100
 MIN_PARTIAL_AUT_FRACTION = 0.5
 MAX_PARTIAL_AUT_FRACTION = 0.8
-MAX_PSEUDO_GRAPHS = 3
+MAX_PSEUDO_GRAPHS = 5
 EDGE_SWAP_MULTIPLIER = 50
 
 
@@ -155,10 +166,15 @@ def create_cross_graph_mapping(
         if len(mapping) >= map_size:
             break
 
-    return mapping if len(mapping) >= 2 else None
+    return (
+        mapping
+        if len(mapping) >= math.ceil(num_of_nodes * MIN_PARTIAL_AUT_FRACTION)
+        else None
+    )
 
 
 def gen_negative_examples_with_pseudosimilar(
+    pynauty_graph: pynauty.Graph,
     num_of_nodes: int,
     edge_list: list[Edge],
     examples_num: int,
@@ -184,7 +200,6 @@ def gen_negative_examples_with_pseudosimilar(
         if success and pseudo_edge_list:
             generated_pseudo.append(pseudo_edge_list)
 
-        # Generate up to 3 different pseudosimilar graphs
         if len(generated_pseudo) >= MAX_PSEUDO_GRAPHS:
             break
 
@@ -203,6 +218,16 @@ def gen_negative_examples_with_pseudosimilar(
         # Verify local validity on original graph
         if not is_paut(adjacency_dict, mapping):
             continue
+
+        generators_raw = pynauty.autgrp(pynauty_graph)[0]
+        generators = [Permutation(g) for g in generators_raw]
+        group = PermutationGroup(generators)
+        if not is_extensible(group, mapping):
+            continue
+
+        assert (
+            len(mapping) >= math.ceil(num_of_nodes * MIN_PARTIAL_AUT_FRACTION)
+        ) and (len(mapping) <= math.floor(num_of_nodes * MAX_PARTIAL_AUT_FRACTION))
 
         key = frozenset(mapping.items())
         if key in seen_negatives:
@@ -232,7 +257,13 @@ def generate_testset(
             if u < v
         ]
         negatives = gen_negative_examples_with_pseudosimilar(
-            graph_data.num_of_nodes, edge_list, examples_per_graph
+            graph_data.graph, graph_data.num_of_nodes, edge_list, examples_per_graph
         )
         testset.append((graph_data.num_of_nodes, graph_data.adjacency_dict, negatives))
     return testset
+
+
+if __name__ == "__main__":
+    graphs = read_graphs_from_g6("positive_graphs.g6")
+    testset = generate_testset(graphs, examples_per_graph=5)
+    print(sum(len(negatives) for _, _, negatives in testset))
