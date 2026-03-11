@@ -9,12 +9,11 @@ import torch
 from pynauty import Graph, autgrp
 from sklearn.model_selection import train_test_split
 from sympy.combinatorics import Permutation, PermutationGroup
-from testset_gen import generate_testset
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 from utils import (
     AdjacencyDict,
-    GraphData,
+    DatasetType,
     Mapping,
     PautStats,
     is_extensible,
@@ -353,37 +352,10 @@ def generate_paut_dataset(
     return dataset
 
 
-def generate_paut_testset(
-    graph_data_list: list[GraphData], examples_per_graph: int
-) -> list[Data]:
-    """Generate a test set of non-extensible partial automorphisms from pseudosimilar graphs.
-
-    :param graph_data_list: List of graph data objects.
-    :param examples_per_graph: Number of negative examples per graph.
-    :returns: List of PyG Data objects with label 0 (non-extensible).
-    """
-    testset = []
-    pseudo_graphs = generate_testset(graph_data_list, examples_per_graph)
-    for num_of_nodes, adjacency_dict, negatives in pseudo_graphs:
-        tensor_edge_index = build_edge_index(adjacency_dict)
-        for _, mapping, _ in negatives:
-            testset.append(
-                make_pyg_data(
-                    tensor_edge_index,
-                    num_of_nodes,
-                    mapping,
-                    label=0,
-                    extra_features=False,
-                )
-            )
-    return testset
-
-
 if __name__ == "__main__":
     positive_graphs = read_graphs_from_g6("positive_graphs.g6")
 
-    graphs_train, graphs_val_test = train_test_split(positive_graphs, test_size=0.2)
-    graphs_val, graphs_test = train_test_split(graphs_val_test, test_size=0.5)
+    graphs_train, graphs_val = train_test_split(positive_graphs, test_size=0.2)
 
     configurations = {
         "baseline": (10, False),
@@ -397,10 +369,10 @@ if __name__ == "__main__":
         paut_sizes = defaultdict(list)
 
         train_dataset = generate_paut_dataset(
-            graphs_train, dataset_type="train", config=config
+            graphs_train, DatasetType.TRAIN, config=config
         )
         val_dataset = generate_paut_dataset(
-            graphs_val, dataset_type="val", config=config
+            graphs_val, DatasetType.VAL, config=config
         )
 
         if config_name == "larger":
@@ -418,6 +390,3 @@ if __name__ == "__main__":
         print(
             f"Generated {len(train_dataset)} train examples and {len(val_dataset)} val examples."
         )
-
-    test_dataset = generate_paut_testset(graphs_test, examples_per_graph=5)
-    torch.save(test_dataset, "test_dataset.pt")
