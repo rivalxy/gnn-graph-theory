@@ -1,11 +1,11 @@
 import csv
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import networkx as nx
 import pynauty
-from sympy.combinatorics import PermutationGroup
+from sympy.combinatorics import Permutation, PermutationGroup
 
 Edge: TypeAlias = tuple[int, int]
 Mapping: TypeAlias = dict[int, int]
@@ -42,7 +42,7 @@ def read_graphs_from_g6(file_path: str) -> list[GraphData]:
     graph_data_list = []
     for graph in graphs:
         num_of_nodes = graph.number_of_nodes()
-        adjacency_dict = build_adjacency_dict(graph.edges())
+        adjacency_dict = build_adjacency_dict(list(graph.edges()))
         pynauty_graph = pynauty.Graph(num_of_nodes)
         pynauty_graph.set_adjacency_dict(adjacency_dict)
         graph_data_list.append(GraphData(pynauty_graph, num_of_nodes, adjacency_dict))
@@ -93,7 +93,7 @@ def is_extensible(group: PermutationGroup, mapping: Mapping) -> bool:
     """
     domain = set(mapping.keys())
     for perm in group.generate():
-        if all(perm.array_form[i] == mapping[i] for i in domain):
+        if all(cast(Permutation, perm).array_form[i] == mapping[i] for i in domain):
             return True
     return False
 
