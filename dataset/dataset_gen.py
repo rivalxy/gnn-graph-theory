@@ -2,11 +2,12 @@ import math
 import os
 import random
 from collections import defaultdict
+from typing import cast
 
 import networkx as nx
 import numpy as np
 import torch
-from pynauty import Graph, autgrp
+from pynauty import autgrp
 from sklearn.model_selection import train_test_split
 from sympy.combinatorics import Permutation, PermutationGroup
 from torch_geometric.data import Data
@@ -14,6 +15,7 @@ from torch_geometric.utils import to_networkx
 from utils import (
     AdjacencyDict,
     DatasetType,
+    GraphData,
     Mapping,
     PautStats,
     is_extensible,
@@ -72,7 +74,7 @@ def gen_positive_examples(
 
     while len(positives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
         attempts += 1
-        perm = group.random().array_form
+        perm = cast(Permutation, group.random()).array_form
         if is_identity_permutation(perm):
             continue
 
@@ -115,7 +117,7 @@ def gen_negative_examples(
 
     while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
         attempts += 1
-        perm = group.random().array_form
+        perm = cast(Permutation, group.random()).array_form
         if is_identity_permutation(perm):
             continue
 
@@ -171,6 +173,7 @@ def block_automorphism(
     for node in unmapped_nodes[: min(MAX_BLOCKING_CANDIDATES, len(unmapped_nodes))]:
         node_neighbors = adj.get(node, set())
 
+        # TODO try only from other orbits, and with the same degree
         for target in targets[: min(MAX_BLOCKING_CANDIDATES, len(targets))]:
             target_neighbors = adj.get(target, set())
 
@@ -282,19 +285,20 @@ def build_edge_index(adjacency_dict: AdjacencyDict) -> torch.Tensor:
 
 
 def generate_paut_dataset(
-    pynauty_graphs: list[Graph], dataset_type: str, config: tuple[int, bool]
-) -> list[Data]:
+    pynauty_graphs: list[GraphData], dataset_type: DatasetType, config: tuple[int, bool]
+) -> tuple[list[Data], dict[int, list[PautStats]]]:
     """Generate partial automorphism dataset with labels from a list of pynauty graphs.
 
     :param pynauty_graphs: List of pynauty graphs.
     :param dataset_type: Type of the dataset (e.g., "train" or "val").
     :param config: Tuple of (max_examples_num, extra_features).
-    :returns: List of PyG Data objects containing partial automorphism mappings and labels.
+    :returns: List of PyG Data objects containing partial automorphism mappings and labels, and a dictionary of PautStats.
     """
     max_examples_num, extra_features = config
 
     positive_pyg_data = []
     negative_pyg_data = []
+    paut_sizes = defaultdict(list)
 
     for graph_data in pynauty_graphs:
         pynauty_graph = graph_data.graph
@@ -349,7 +353,7 @@ def generate_paut_dataset(
             )
 
     dataset = positive_pyg_data + negative_pyg_data
-    return dataset
+    return dataset, paut_sizes
 
 
 if __name__ == "__main__":
@@ -368,12 +372,19 @@ if __name__ == "__main__":
 
         paut_sizes = defaultdict(list)
 
-        train_dataset = generate_paut_dataset(
+        train_dataset, train_paut_sizes = generate_paut_dataset(
             graphs_train, DatasetType.TRAIN, config=config
         )
-        val_dataset = generate_paut_dataset(
+
+        val_dataset, val_paut_sizes = generate_paut_dataset(
             graphs_val, DatasetType.VAL, config=config
         )
+
+        paut_sizes = defaultdict(list)
+        for node_count, stats in train_paut_sizes.items():
+            paut_sizes[node_count].extend(stats)
+        for node_count, stats in val_paut_sizes.items():
+            paut_sizes[node_count].extend(stats)
 
         if config_name == "larger":
             torch.save(train_dataset, "train_dataset.pt")
