@@ -74,5 +74,7 @@ def path_graph_group() -> PermutationGroup:
         ({0: 1, 1: 0, 5: 6, 6: 5}, False),
     ],
 )
-def test_is_extensible(path_graph_group: PermutationGroup, mapping: dict[int, int], expected: bool) -> None:
+def test_is_extensible(
+    path_graph_group: PermutationGroup, mapping: dict[int, int], expected: bool
+) -> None:
     assert is_extensible(path_graph_group, mapping) == expected
