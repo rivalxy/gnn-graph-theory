@@ -91,7 +91,7 @@ def gen_positive_examples(
             continue
 
         seen_positives.add(key)
-        positives.append((mapping, p_aut_size))
+        positives.append((mapping, len(mapping)))
     return positives
 
 
@@ -100,7 +100,7 @@ def gen_pseudo_similar_examples(
     num_of_nodes: int,
     adjacency_list: AdjacencyDict,
     examples_num: int,
-) -> list[tuple[Mapping, int, int]]:
+) -> list[tuple[Mapping, int]]:
     """Generate hard negative examples using pseudo-similar vertex pairs.
 
     A pseudo-similar pair (u, v) satisfies two properties simultaneously:
@@ -121,7 +121,7 @@ def gen_pseudo_similar_examples(
     :param num_of_nodes: Number of nodes in the graph.
     :param adjacency_list: Adjacency dictionary of the graph.
     :param examples_num: Target number of negatives to produce.
-    :returns: List of (mapping, size, 0) tuples. Empty if the graph has no
+    :returns: List of (mapping, size,) tuples. Empty if the graph has no
         pseudo-similar pair (method degrades gracefully).
     """
     pair = find_pseudo_similar_pair(adjacency_list, group, num_of_nodes)
@@ -129,7 +129,7 @@ def gen_pseudo_similar_examples(
         return []
 
     u, v, sigma = pair
-    negatives: list[tuple[Mapping, int, int]] = []
+    negatives: list[tuple[Mapping, int]] = []
     seen: set[frozenset] = set()
 
     min_size = math.ceil(num_of_nodes * MIN_PARTIAL_AUT_FRACTION)
@@ -153,7 +153,7 @@ def gen_pseudo_similar_examples(
         if key in seen:
             continue
         seen.add(key)
-        negatives.append((mapping, len(mapping), 0))
+        negatives.append((mapping, len(mapping)))
 
     return negatives
 
@@ -163,7 +163,7 @@ def gen_blocking_examples(
     examples_num: int,
     num_of_nodes: int,
     adjacency_list: AdjacencyDict,
-) -> list[tuple[Mapping, int, int]]:
+) -> list[tuple[Mapping, int]]:
     """Generate negative examples (non-extensible partial automorphisms) using blocking strategy.
 
     Creates partial automorphisms that are locally valid but cannot be extended to full
@@ -173,8 +173,7 @@ def gen_blocking_examples(
     :param examples_num: Number of negative examples to generate.
     :param num_of_nodes: Number of nodes in the graph.
     :param adjacency_list: Adjacency dictionary of the graph.
-    :returns: List of tuples (mapping, original_paut_size, extension_size) where extension_size
-        indicates how many nodes were added during the blocking process.
+    :returns: List of tuples (mapping, size) where size indicates the number of nodes in the partial automorphism.
     """
     negatives = []
     seen_negatives = set()
@@ -189,7 +188,6 @@ def gen_blocking_examples(
             continue
 
         p_aut_size = sample_partial_size(num_of_nodes, upper_bound=maximum_size) - 1
-        original_paut_size = p_aut_size
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
@@ -220,7 +218,7 @@ def gen_blocking_examples(
             continue
 
         seen_negatives.add(key)
-        negatives.append((mapping, original_paut_size, current_extension))
+        negatives.append((mapping, len(mapping)))
 
     return negatives
 
@@ -411,7 +409,7 @@ def generate_raw_examples(
                     num_of_nodes=num_of_nodes,
                     mapping=mapping,
                     label=1,
-                    paut_stats=PautStats(p_aut_size, 0, dataset_type),
+                    paut_stats=PautStats(p_aut_size, 1, dataset_type),
                 )
             )
 
@@ -424,7 +422,7 @@ def generate_raw_examples(
         )
 
         negative_seen_keys: set[frozenset] = {
-            frozenset(mapping.items()) for mapping, _, _ in negatives_pseudo
+            frozenset(mapping.items()) for mapping, _ in negatives_pseudo
         }
         negatives_blocking_filtered = [
             t
@@ -433,7 +431,7 @@ def generate_raw_examples(
         ]
         negatives = (negatives_pseudo + negatives_blocking_filtered)[: len(positives)]
 
-        for mapping, original_paut_size, extension_size in negatives:
+        for mapping, p_aut_size in negatives:
             assert is_paut(adjacency_dict, mapping)
             assert not is_extensible(group, mapping)
 
@@ -444,7 +442,7 @@ def generate_raw_examples(
                     mapping=mapping,
                     label=0,
                     paut_stats=PautStats(
-                        original_paut_size, extension_size, dataset_type
+                        p_aut_size, 0, dataset_type
                     ),
                 )
             )
