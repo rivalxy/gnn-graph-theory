@@ -257,8 +257,8 @@ class DatasetType(StrEnum):
 
 @dataclass
 class PautStats:
-    original_paut_size: int
-    extension_size: int
+    paut_size: int
+    label: int
     dataset_type: DatasetType
 
 
@@ -274,15 +274,15 @@ def paut_sizes_to_csv(
     with open(file_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(
-            ["num_of_nodes", "original_paut_size", "extension_size", "dataset_type"]
+            ["num_of_nodes", "paut_size", "label", "dataset_type"]
         )
         for num_of_nodes, stats in stats_by_node_count.items():
             for stat in stats:
                 writer.writerow(
                     [
                         num_of_nodes,
-                        stat.original_paut_size,
-                        stat.extension_size,
+                        stat.paut_size,
+                        stat.label,
                         stat.dataset_type,
                     ]
                 )
