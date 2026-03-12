@@ -1,4 +1,6 @@
 import csv
+import random
+from collections import deque
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TypeAlias, cast
@@ -91,6 +93,17 @@ def is_extensible(group: PermutationGroup, mapping: Mapping) -> bool:
         Indices must be contiguous non-negative integers matching the pynauty graph representation.
     :returns: True if the mapping can be extended to a full automorphism, False otherwise.
     """
+    if not mapping:
+        return True
+
+    # Quick rejection: every src -> dst must have src and dst in the same orbit.
+    orbits = group.orbits()
+    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
+    for src, dst in mapping.items():
+        if orbit_of.get(src) != orbit_of.get(dst):
+            return False
+
+    # Full check: enumerate group elements.
     domain = set(mapping.keys())
     for perm in group.generate():
         if all(cast(Permutation, perm).array_form[i] == mapping[i] for i in domain):
@@ -98,9 +111,148 @@ def is_extensible(group: PermutationGroup, mapping: Mapping) -> bool:
     return False
 
 
+def adj_to_nx_graph(adj: AdjacencyDict, num_nodes: int) -> nx.Graph:
+    """Convert an adjacency dictionary to a NetworkX graph.
+
+    :param adj: Adjacency dictionary of the graph.
+    :param num_nodes: Number of nodes.
+    :returns: Equivalent NetworkX Graph.
+    """
+    G = nx.Graph()
+    G.add_nodes_from(range(num_nodes))
+    for u, neighbors in adj.items():
+        for v in neighbors:
+            G.add_edge(u, v)
+    return G
+
+
+def check_deletion_isomorphism(G: nx.Graph, u: int, v: int) -> dict[int, int] | None:
+    """Check whether G - u is isomorphic to G - v.
+
+    If so, return a witnessing isomorphism sigma: V(G-u) -> V(G-v).
+    sigma is defined on every vertex except u, and maps to every vertex
+    except v.
+
+    :param G: A NetworkX graph.
+    :param u: First vertex to delete.
+    :param v: Second vertex to delete.
+    :returns: Isomorphism dict or None if G-u ≇ G-v.
+    """
+    G_minus_u = G.copy()
+    G_minus_u.remove_node(u)
+    G_minus_v = G.copy()
+    G_minus_v.remove_node(v)
+
+    gm = nx.algorithms.isomorphism.GraphMatcher(G_minus_u, G_minus_v)
+    if gm.is_isomorphic():
+        return next(gm.isomorphisms_iter())
+    return None
+
+
+def find_pseudo_similar_pair(
+    adj: AdjacencyDict,
+    group: PermutationGroup,
+    num_nodes: int,
+    max_pairs: int = 100,
+) -> tuple[int, int, dict[int, int]] | None:
+    """Search for a pseudo-similar pair in the graph.
+
+    A pseudo-similar pair (u, v) satisfies:
+      - u and v are in *different* orbits of Aut(G)  → {u→v} is non-extendable
+      - G - u ≅ G - v                                → the seed looks locally valid
+
+    :param adj: Adjacency dictionary of the graph.
+    :param group: Automorphism group of the graph.
+    :param num_nodes: Number of nodes.
+    :param max_pairs: Maximum cross-orbit pairs to test before giving up.
+    :returns: (u, v, sigma) where sigma: V(G-u) -> V(G-v), or None if not found.
+    """
+    G = adj_to_nx_graph(adj, num_nodes)
+    orbits = group.orbits()
+    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
+
+    nodes = list(range(num_nodes))
+    random.shuffle(nodes)
+    checked = 0
+
+    for u in nodes:
+        for v in nodes:
+            if u >= v:
+                continue
+
+            if orbit_of.get(u) == orbit_of.get(v):
+                continue
+
+            sigma = check_deletion_isomorphism(G, u, v)
+            if sigma is not None:
+                return u, v, sigma
+
+            checked += 1
+            if checked >= max_pairs:
+                return None
+
+    return None
+
+
+def bfs_expand_pseudo_similar(
+    adj: AdjacencyDict,
+    u: int,
+    v: int,
+    sigma: dict[int, int],
+    target_size: int,
+) -> Mapping:
+    """Grow the seed mapping {u: v} outward by BFS.
+
+    For each visited node w, sigma[w] is the candidate image. The node is
+    added to the domain only when w → sigma[w] keeps the mapping a valid
+    partial automorphism of the *original* graph.
+
+    Because u and v are pseudo-similar (different orbits), any mapping that
+    contains u → v is guaranteed non-extendable, regardless of its size.
+
+    :param adj: Adjacency dictionary of the original graph.
+    :param u: Seed source vertex.
+    :param v: Seed target vertex (image of u).
+    :param sigma: Witnessing isomorphism V(G-u) -> V(G-v).
+    :param target_size: Stop once the mapping reaches this size.
+    :returns: A partial automorphism containing u → v, of size ≤ target_size.
+    """
+    mapping: Mapping = {u: v}
+    used_targets: set[int] = {v}
+
+    queue: deque[int] = deque([u])
+    visited: set[int] = {u}
+
+    while queue and len(mapping) < target_size:
+        current = queue.popleft()
+        neighbors = list(adj.get(current, set()))
+        random.shuffle(neighbors)
+
+        for w in neighbors:
+            if w in visited:
+                continue
+            visited.add(w)
+
+            candidate = sigma.get(w)
+            if candidate is None or candidate in used_targets:
+                continue
+
+            test_map = {**mapping, w: candidate}
+            if is_paut(adj, test_map):
+                mapping = test_map
+                used_targets.add(candidate)
+                queue.append(w)
+
+            if len(mapping) >= target_size:
+                break
+
+    return mapping
+
+
 class DatasetType(StrEnum):
     TRAIN = "train"
     VAL = "val"
+    TEST = "test"
 
 
 @dataclass
