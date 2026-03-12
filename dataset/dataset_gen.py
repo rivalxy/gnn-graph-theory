@@ -133,7 +133,9 @@ def gen_negative_examples(
 
         while current_extension < extension_size and extension_attempts < MAX_ATTEMPTS:
             extension_attempts += 1
-            new_mapping = block_automorphism(mapping, num_of_nodes, adjacency_list)
+            new_mapping = block_automorphism(
+                mapping, num_of_nodes, adjacency_list, group
+            )
 
             if new_mapping is None:
                 break
@@ -157,9 +159,11 @@ def gen_negative_examples(
 
 
 def block_automorphism(
-    positive: Mapping, num_of_nodes: int, adj: AdjacencyDict
+    positive: Mapping, num_of_nodes: int, adj: AdjacencyDict, group: PermutationGroup
 ) -> Mapping | None:
     nodes = list(range(num_of_nodes))
+    orbits = group.orbits()
+    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
 
     unmapped_nodes = [n for n in nodes if n not in positive]
     targets = [n for n in nodes if n not in positive.values()]
@@ -173,8 +177,13 @@ def block_automorphism(
     for node in unmapped_nodes[: min(MAX_BLOCKING_CANDIDATES, len(unmapped_nodes))]:
         node_neighbors = adj.get(node, set())
 
-        # TODO try only from other orbits, and with the same degree
-        for target in targets[: min(MAX_BLOCKING_CANDIDATES, len(targets))]:
+        non_orbit_targets = [
+            t for t in targets if orbit_of.get(t) != orbit_of.get(node)
+        ]
+
+        for target in non_orbit_targets[
+            : min(MAX_BLOCKING_CANDIDATES, len(non_orbit_targets))
+        ]:
             target_neighbors = adj.get(target, set())
 
             test_map = positive.copy()
