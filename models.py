@@ -7,7 +7,9 @@ from torch_geometric.nn import GINConv, GPSConv, global_add_pool
 
 
 class GIN(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, num_layers: int, dropout: float):
+    def __init__(
+        self, input_dim: int, hidden_dim: int, num_layers: int, dropout: float
+    ):
         super().__init__()
 
         self.dropout = dropout
@@ -16,12 +18,14 @@ class GIN(nn.Module):
 
         for _ in range(num_layers):
             self.convs.append(
-                GINConv(nn.Sequential(
-                    nn.Linear(input_dim, 2 * hidden_dim),
-                    nn.BatchNorm1d(2 * hidden_dim),
-                    nn.ReLU(),
-                    nn.Linear(2 * hidden_dim, hidden_dim),
-                ))
+                GINConv(
+                    nn.Sequential(
+                        nn.Linear(input_dim, 2 * hidden_dim),
+                        nn.BatchNorm1d(2 * hidden_dim),
+                        nn.ReLU(),
+                        nn.Linear(2 * hidden_dim, hidden_dim),
+                    )
+                )
             )
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
             input_dim = hidden_dim
@@ -46,7 +50,15 @@ class GIN(nn.Module):
 
 
 class GPS(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, num_layers: int, dropout: float, attn_dropout: float, heads: int):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
+        attn_dropout: float,
+        heads: int,
+    ):
         super().__init__()
 
         self.dropout = dropout
@@ -54,12 +66,14 @@ class GPS(nn.Module):
 
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
-            gin = GINConv(nn.Sequential(
-                nn.Linear(hidden_dim, 2 * hidden_dim),
-                nn.BatchNorm1d(2 * hidden_dim),
-                nn.ReLU(),
-                nn.Linear(2 * hidden_dim, hidden_dim),
-            ))
+            gin = GINConv(
+                nn.Sequential(
+                    nn.Linear(hidden_dim, 2 * hidden_dim),
+                    nn.BatchNorm1d(2 * hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(2 * hidden_dim, hidden_dim),
+                )
+            )
 
             self.convs.append(
                 GPSConv(
@@ -67,7 +81,7 @@ class GPS(nn.Module):
                     conv=gin,
                     heads=heads,
                     dropout=attn_dropout,
-                    attn_type='multihead'
+                    attn_type="multihead",
                 )
             )
 
@@ -77,7 +91,7 @@ class GPS(nn.Module):
 
     def forward(self, data: torch_geometric.data.Data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-        
+
         x = torch.cat([x, data.pe], dim=-1)
         x = self.input_proj(x)
 

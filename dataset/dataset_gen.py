@@ -429,7 +429,7 @@ def generate_raw_examples(
             for t in negatives_blocking
             if frozenset(t[0].items()) not in negative_seen_keys
         ]
-        negatives = (negatives_pseudo + negatives_blocking_filtered)[:len(positives)]
+        negatives = (negatives_pseudo + negatives_blocking_filtered)[: len(positives)]
 
         for mapping, p_aut_size in negatives:
             assert is_paut(adjacency_dict, mapping)
@@ -441,9 +441,7 @@ def generate_raw_examples(
                     num_of_nodes=num_of_nodes,
                     mapping=mapping,
                     label=0,
-                    paut_stats=PautStats(
-                        p_aut_size, 0, dataset_type
-                    ),
+                    paut_stats=PautStats(p_aut_size, 0, dataset_type),
                 )
             )
 
