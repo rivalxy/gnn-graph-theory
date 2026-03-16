@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric
+import torch_geometric.data
 from torch_geometric.nn import GINConv, GPSConv, global_add_pool
 
 
