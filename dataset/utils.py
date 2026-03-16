@@ -273,9 +273,7 @@ def paut_sizes_to_csv(
     """
     with open(file_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(
-            ["num_of_nodes", "paut_size", "label", "dataset_type"]
-        )
+        writer.writerow(["num_of_nodes", "paut_size", "label", "dataset_type"])
         for num_of_nodes, stats in stats_by_node_count.items():
             for stat in stats:
                 writer.writerow(
