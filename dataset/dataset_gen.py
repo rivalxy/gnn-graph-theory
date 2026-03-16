@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from sympy.combinatorics import Permutation, PermutationGroup
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
-from utils import (
+from data_utils import (
     AdjacencyDict,
     DatasetType,
     GraphData,
