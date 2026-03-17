@@ -9,11 +9,6 @@ from typing import cast
 import networkx as nx
 import numpy as np
 import torch
-from pynauty import autgrp
-from sklearn.model_selection import train_test_split
-from sympy.combinatorics import Permutation, PermutationGroup
-from torch_geometric.data import Data
-from torch_geometric.utils import to_networkx
 from data_utils import (
     AdjacencyDict,
     DatasetType,
@@ -27,6 +22,11 @@ from data_utils import (
     paut_sizes_to_csv,
     read_graphs_from_g6,
 )
+from pynauty import autgrp
+from sklearn.model_selection import train_test_split
+from sympy.combinatorics import Permutation, PermutationGroup
+from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx
 
 MAX_ATTEMPTS = 100
 MIN_PARTIAL_AUT_FRACTION = 0.5
