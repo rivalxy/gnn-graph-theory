@@ -1,13 +1,14 @@
 import pytest
 from sympy.combinatorics import Permutation, PermutationGroup
-from utils import is_paut, is_extensible
+
+from dataset.graph_utils import is_extensible, is_paut
 
 
 @pytest.mark.skip(
     reason="Requires updated utils.py with GraphData and read_graphs_from_g6"
 )
 def test_read_graphs_from_g6() -> None:
-    from utils import read_graphs_from_g6
+    from dataset.graph_utils import read_graphs_from_g6
 
     graphs = read_graphs_from_g6("dataset/test_graphs.g6")
     assert len(graphs) == 3
