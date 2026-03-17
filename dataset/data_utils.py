@@ -12,6 +12,12 @@ from sympy.combinatorics import Permutation, PermutationGroup
 Edge: TypeAlias = tuple[int, int]
 Mapping: TypeAlias = dict[int, int]
 AdjacencyDict: TypeAlias = dict[int, set[int]]
+OrbitMap: TypeAlias = dict[int, int]
+Isomorphism: TypeAlias = dict[int, int]
+
+
+def build_orbit_map(group: PermutationGroup) -> OrbitMap:
+    return {node: i for i, orbit in enumerate(group.orbits()) for node in orbit}
 
 
 def build_adjacency_dict(edge_list: list[Edge]) -> AdjacencyDict:
@@ -41,7 +47,7 @@ def read_graphs_from_g6(file_path: str) -> list[GraphData]:
     :returns: List of GraphData objects containing the pynauty graph, number of nodes, and adjacency dictionary.
     """
     graphs: list[nx.Graph] = nx.read_graph6(file_path)
-    graph_data_list = []
+    graph_data_list: list[GraphData] = []
     for graph in graphs:
         num_of_nodes = graph.number_of_nodes()
         adjacency_dict = build_adjacency_dict(list(graph.edges()))
@@ -97,8 +103,7 @@ def is_extensible(group: PermutationGroup, mapping: Mapping) -> bool:
         return True
 
     # Quick rejection: every src -> dst must have src and dst in the same orbit.
-    orbits = group.orbits()
-    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
+    orbit_of = build_orbit_map(group)
     for src, dst in mapping.items():
         if orbit_of.get(src) != orbit_of.get(dst):
             return False
@@ -118,32 +123,32 @@ def adj_to_nx_graph(adj: AdjacencyDict, num_nodes: int) -> nx.Graph:
     :param num_nodes: Number of nodes.
     :returns: Equivalent NetworkX Graph.
     """
-    G = nx.Graph()
-    G.add_nodes_from(range(num_nodes))
+    graph = nx.Graph()
+    graph.add_nodes_from(range(num_nodes))
     for u, neighbors in adj.items():
         for v in neighbors:
-            G.add_edge(u, v)
-    return G
+            graph.add_edge(u, v)
+    return graph
 
 
-def check_deletion_isomorphism(G: nx.Graph, u: int, v: int) -> dict[int, int] | None:
+def check_deletion_isomorphism(graph: nx.Graph, u: int, v: int) -> Isomorphism | None:
     """Check whether G - u is isomorphic to G - v.
 
     If so, return a witnessing isomorphism sigma: V(G-u) -> V(G-v).
     sigma is defined on every vertex except u, and maps to every vertex
     except v.
 
-    :param G: A NetworkX graph.
+    :param graph: A NetworkX graph.
     :param u: First vertex to delete.
     :param v: Second vertex to delete.
     :returns: Isomorphism dict or None if G-u ≇ G-v.
     """
-    G_minus_u = G.copy()
-    G_minus_u.remove_node(u)
-    G_minus_v = G.copy()
-    G_minus_v.remove_node(v)
+    graph_minus_u = graph.copy()
+    graph_minus_u.remove_node(u)
+    graph_minus_v = graph.copy()
+    graph_minus_v.remove_node(v)
 
-    gm = nx.algorithms.isomorphism.GraphMatcher(G_minus_u, G_minus_v)
+    gm = nx.algorithms.isomorphism.GraphMatcher(graph_minus_u, graph_minus_v)
     if gm.is_isomorphic():
         return next(gm.isomorphisms_iter())
     return None
@@ -167,9 +172,8 @@ def find_pseudo_similar_pair(
     :param max_pairs: Maximum cross-orbit pairs to test before giving up.
     :returns: (u, v, sigma) where sigma: V(G-u) -> V(G-v), or None if not found.
     """
-    G = adj_to_nx_graph(adj, num_nodes)
-    orbits = group.orbits()
-    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
+    graph = adj_to_nx_graph(adj, num_nodes)
+    orbit_of = build_orbit_map(group)
 
     nodes = list(range(num_nodes))
     random.shuffle(nodes)
@@ -183,7 +187,7 @@ def find_pseudo_similar_pair(
             if orbit_of.get(u) == orbit_of.get(v):
                 continue
 
-            sigma = check_deletion_isomorphism(G, u, v)
+            sigma = check_deletion_isomorphism(graph, u, v)
             if sigma is not None:
                 return u, v, sigma
 
@@ -198,7 +202,7 @@ def bfs_expand_pseudo_similar(
     adj: AdjacencyDict,
     u: int,
     v: int,
-    sigma: dict[int, int],
+    sigma: Isomorphism,
     target_size: int,
 ) -> Mapping:
     """Grow the seed mapping {u: v} outward by BFS.
@@ -265,8 +269,7 @@ class PautStats:
 def paut_sizes_to_csv(
     stats_by_node_count: dict[int, list[PautStats]], file_path: str
 ) -> None:
-    """
-    Writes PautStats grouped by node count to a CSV file.
+    """Write PautStats grouped by node count to a CSV file.
 
     :param stats_by_node_count: Dictionary mapping number of nodes to a list of PautStats.
     :param file_path: Path to the output CSV file.
