@@ -9,7 +9,7 @@ import torch_geometric.loader
 import torch_geometric.utils
 from sklearn import metrics
 
-from dataset.data_utils import build_adjacency_dict
+from dataset.graph_utils import build_adjacency_dict
 from models import GIN
 
 FEATURE_TARGET_ID = 1

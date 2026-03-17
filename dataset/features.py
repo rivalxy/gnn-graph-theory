@@ -1,8 +1,9 @@
 import networkx as nx
 import torch
-from data_utils import Mapping
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
+
+from dataset.graph_utils import Mapping
 
 BASELINE_FEATURE_DIM = 3
 EXTRA_FEATURE_DIM = 7

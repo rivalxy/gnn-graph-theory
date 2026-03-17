@@ -3,9 +3,19 @@ import os
 from collections import defaultdict
 
 import torch
-from build import DatasetConfiguration, generate_raw_examples, raw_examples_to_pyg
-from data_utils import DatasetType, PautStats, paut_sizes_to_csv, read_graphs_from_g6
 from sklearn.model_selection import train_test_split
+
+from dataset.build import (
+    DatasetConfiguration,
+    generate_raw_examples,
+    raw_examples_to_pyg,
+)
+from dataset.graph_utils import (
+    DatasetType,
+    PautStats,
+    paut_sizes_to_csv,
+    read_graphs_from_g6,
+)
 
 
 def main() -> None:

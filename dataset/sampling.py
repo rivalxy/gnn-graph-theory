@@ -2,7 +2,9 @@ import math
 import random
 from typing import cast
 
-from data_utils import (
+from sympy.combinatorics import Permutation, PermutationGroup
+
+from dataset.graph_utils import (
     AdjacencyDict,
     Mapping,
     bfs_expand_pseudo_similar,
@@ -11,7 +13,6 @@ from data_utils import (
     is_extensible,
     is_paut,
 )
-from sympy.combinatorics import Permutation, PermutationGroup
 
 MAX_ATTEMPTS = 100
 MIN_PARTIAL_AUT_FRACTION = 0.5
