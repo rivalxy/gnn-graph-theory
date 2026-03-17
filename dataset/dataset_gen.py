@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import cast
 
 import networkx as nx
-import numpy as np
 import torch
 from data_utils import (
     AdjacencyDict,
@@ -16,6 +15,7 @@ from data_utils import (
     Mapping,
     PautStats,
     bfs_expand_pseudo_similar,
+    build_orbit_map,
     find_pseudo_similar_pair,
     is_extensible,
     is_paut,
@@ -32,6 +32,8 @@ MAX_ATTEMPTS = 100
 MIN_PARTIAL_AUT_FRACTION = 0.5
 MAX_PARTIAL_AUT_FRACTION = 0.8
 MAX_BLOCKING_CANDIDATES = 5
+BASELINE_FEATURE_DIM = 3
+EXTRA_FEATURE_DIM = 7
 
 # Feature indices for extra features
 FEATURE_NODE_ID = 0
@@ -47,13 +49,24 @@ def is_identity_permutation(perm: list[int]) -> bool:
     return all(i == mapped for i, mapped in enumerate(perm))
 
 
-def sample_partial_size(num_of_nodes: int, upper_bound: int | None = None) -> int:
+def mapping_key(mapping: Mapping) -> frozenset[tuple[int, int]]:
+    return frozenset(mapping.items())
+
+
+def partial_size_bounds(
+    num_of_nodes: int, upper_bound: int | None = None
+) -> tuple[int, int]:
     min_size = math.ceil(num_of_nodes * MIN_PARTIAL_AUT_FRACTION)
     max_size = (
         upper_bound
         if upper_bound is not None
         else math.floor(num_of_nodes * MAX_PARTIAL_AUT_FRACTION)
     )
+    return min_size, max_size
+
+
+def sample_partial_size(num_of_nodes: int, upper_bound: int | None = None) -> int:
+    min_size, max_size = partial_size_bounds(num_of_nodes, upper_bound)
     return random.randint(min_size, max_size)
 
 
@@ -66,6 +79,14 @@ def normalize(values: torch.Tensor) -> torch.Tensor:
         return values
 
     return values / max_value
+
+
+def is_non_extensible_paut(
+    adjacency_list: AdjacencyDict,
+    group: PermutationGroup,
+    mapping: Mapping,
+) -> bool:
+    return is_paut(adjacency_list, mapping) and not is_extensible(group, mapping)
 
 
 def gen_positive_examples(
@@ -86,7 +107,7 @@ def gen_positive_examples(
         domain = random.sample(nodes, p_aut_size)
         mapping = {i: perm[i] for i in domain}
 
-        key = frozenset(mapping.items())
+        key = mapping_key(mapping)
         if key in seen_positives:
             continue
 
@@ -112,10 +133,7 @@ def gen_pseudo_similar_examples(
     guide, until the mapping covers between MIN and MAX partial-aut fraction
     of the graph.
 
-    Returns the same (mapping, original_paut_size, extension_size) tuple
-    shape as gen_negative_examples so callers stay uniform. Here
-    original_paut_size is the final mapping size and extension_size is 0
-    (the whole mapping is built at once from the seed, not by blocking).
+    Returns (mapping, size) pairs where size is the final mapping size.
 
     :param group: Automorphism group of the graph.
     :param num_of_nodes: Number of nodes in the graph.
@@ -130,10 +148,9 @@ def gen_pseudo_similar_examples(
 
     u, v, sigma = pair
     negatives: list[tuple[Mapping, int]] = []
-    seen: set[frozenset] = set()
+    seen: set[frozenset[tuple[int, int]]] = set()
 
-    min_size = math.ceil(num_of_nodes * MIN_PARTIAL_AUT_FRACTION)
-    max_size = math.floor(num_of_nodes * MAX_PARTIAL_AUT_FRACTION)
+    min_size, max_size = partial_size_bounds(num_of_nodes)
     attempts = 0
 
     while len(negatives) < examples_num and attempts < MAX_ATTEMPTS * examples_num:
@@ -144,12 +161,10 @@ def gen_pseudo_similar_examples(
 
         if len(mapping) < min_size:
             continue
-        if not is_paut(adjacency_list, mapping):
-            continue
-        if is_extensible(group, mapping):
+        if not is_non_extensible_paut(adjacency_list, group, mapping):
             continue
 
-        key = frozenset(mapping.items())
+        key = mapping_key(mapping)
         if key in seen:
             continue
         seen.add(key)
@@ -175,8 +190,8 @@ def gen_blocking_examples(
     :param adjacency_list: Adjacency dictionary of the graph.
     :returns: List of tuples (mapping, size) where size indicates the number of nodes in the partial automorphism.
     """
-    negatives = []
-    seen_negatives = set()
+    negatives: list[tuple[Mapping, int]] = []
+    seen_negatives: set[frozenset[tuple[int, int]]] = set()
     attempts = 0
     nodes = list(range(num_of_nodes))
     maximum_size = math.floor(num_of_nodes * MAX_PARTIAL_AUT_FRACTION)
@@ -208,12 +223,10 @@ def gen_blocking_examples(
             mapping = new_mapping
             current_extension += 1
 
-        if not is_paut(adjacency_list, mapping):
-            continue
-        if is_extensible(group, mapping):
+        if not is_non_extensible_paut(adjacency_list, group, mapping):
             continue
 
-        key = frozenset(mapping.items())
+        key = mapping_key(mapping)
         if key in seen_negatives:
             continue
 
@@ -227,8 +240,7 @@ def block_automorphism(
     positive: Mapping, num_of_nodes: int, adj: AdjacencyDict, group: PermutationGroup
 ) -> Mapping | None:
     nodes = list(range(num_of_nodes))
-    orbits = group.orbits()
-    orbit_of = {node: i for i, orbit in enumerate(orbits) for node in orbit}
+    orbit_of = build_orbit_map(group)
 
     unmapped_nodes = [n for n in nodes if n not in positive]
     targets = [n for n in nodes if n not in positive.values()]
@@ -250,7 +262,7 @@ def block_automorphism(
             test_map = positive.copy()
             test_map[node] = target
 
-            if is_paut(adj, test_map) and not is_extensible(group, test_map):
+            if is_non_extensible_paut(adj, group, test_map):
                 return test_map
 
     return None
@@ -273,48 +285,10 @@ def make_pyg_data(
     :returns: PyTorch Geometric Data object.
     """
     if extra_features:
-        x = torch.full((num_of_nodes, 7), -1.0, dtype=torch.float)
-        data = Data(edge_index=tensor_edge_index, num_nodes=num_of_nodes)
-        nx_graph = to_networkx(data, to_undirected=True)
-
-        # Add normalized degree as a feature
-        degrees = torch.tensor(
-            [nx_graph.degree(node) for node in range(num_of_nodes)], dtype=torch.float
-        )
-        x[:, FEATURE_DEGREE] = normalize(degrees)
-
-        # Add clustering coefficient as a feature
-        clustering_coeffs = torch.tensor(
-            [nx.clustering(nx_graph, node) for node in range(num_of_nodes)],
-            dtype=torch.float,
-        )
-        x[:, FEATURE_CLUSTERING] = clustering_coeffs
-
-        # Add a normalized triangle count
-        triangle_counts = torch.tensor(
-            [nx.triangles(nx_graph, node) for node in range(num_of_nodes)],
-            dtype=torch.float,
-        )
-        x[:, FEATURE_TRIANGLES] = normalize(triangle_counts)
-
-        # Add average neighbor degree
-        avg_neighbor_degrees = []
-        for node in range(num_of_nodes):
-            neighbors = list(nx_graph.neighbors(node))
-            if neighbors:
-                avg_degree = np.mean(
-                    [nx_graph.degree(neighbor) for neighbor in neighbors]
-                )
-            else:
-                avg_degree = 0.0
-            avg_neighbor_degrees.append(avg_degree)
-
-        avg_neighbor_degrees = torch.tensor(avg_neighbor_degrees, dtype=torch.float)
-        x[:, FEATURE_AVG_NEIGHBOR_DEGREE] = normalize(avg_neighbor_degrees)
-
+        x = build_extra_feature_matrix(tensor_edge_index, num_of_nodes)
     else:
         # 3 features: node_id, target_id, source_id
-        x = torch.full((num_of_nodes, 3), -1.0, dtype=torch.float)
+        x = torch.full((num_of_nodes, BASELINE_FEATURE_DIM), -1.0, dtype=torch.float)
 
     # Give EVERY node its own identity
     for node in range(num_of_nodes):
@@ -328,6 +302,74 @@ def make_pyg_data(
     y = torch.tensor([label], dtype=torch.float)
     data = Data(x=x, edge_index=tensor_edge_index, y=y)
     return data
+
+
+def build_extra_feature_matrix(
+    tensor_edge_index: torch.Tensor, num_of_nodes: int
+) -> torch.Tensor:
+    x = torch.full((num_of_nodes, EXTRA_FEATURE_DIM), -1.0, dtype=torch.float)
+    pyg_graph = Data(edge_index=tensor_edge_index, num_nodes=num_of_nodes)
+    nx_graph = to_networkx(pyg_graph, to_undirected=True)
+
+    degrees = torch.tensor(
+        [nx_graph.degree(node) for node in range(num_of_nodes)], dtype=torch.float
+    )
+    x[:, FEATURE_DEGREE] = normalize(degrees)
+
+    clustering_coeffs = torch.tensor(
+        [nx.clustering(nx_graph, node) for node in range(num_of_nodes)],
+        dtype=torch.float,
+    )
+    x[:, FEATURE_CLUSTERING] = clustering_coeffs
+
+    triangle_counts = torch.tensor(
+        [nx.triangles(nx_graph, node) for node in range(num_of_nodes)],
+        dtype=torch.float,
+    )
+    x[:, FEATURE_TRIANGLES] = normalize(triangle_counts)
+
+    avg_neighbor_degrees = []
+    for node in range(num_of_nodes):
+        neighbors = list(nx_graph.neighbors(node))
+        if neighbors:
+            avg_degree = sum(nx_graph.degree(neighbor) for neighbor in neighbors) / len(
+                neighbors
+            )
+        else:
+            avg_degree = 0.0
+        avg_neighbor_degrees.append(avg_degree)
+
+    x[:, FEATURE_AVG_NEIGHBOR_DEGREE] = normalize(
+        torch.tensor(avg_neighbor_degrees, dtype=torch.float)
+    )
+    return x
+
+
+def append_validated_examples(
+    raw_examples: list[RawPautExample],
+    examples: list[tuple[Mapping, int]],
+    *,
+    edge_index: torch.Tensor,
+    num_of_nodes: int,
+    adjacency_dict: AdjacencyDict,
+    group: PermutationGroup,
+    label: int,
+    dataset_type: DatasetType,
+) -> None:
+    expected_extensible = label == 1
+    for mapping, p_aut_size in examples:
+        assert is_paut(adjacency_dict, mapping)
+        assert is_extensible(group, mapping) == expected_extensible
+
+        raw_examples.append(
+            RawPautExample(
+                edge_index=edge_index,
+                num_of_nodes=num_of_nodes,
+                mapping=mapping,
+                label=label,
+                paut_stats=PautStats(p_aut_size, label, dataset_type),
+            )
+        )
 
 
 @dataclass
@@ -399,19 +441,16 @@ def generate_raw_examples(
 
         positives = gen_positive_examples(group, num_of_nodes, examples_num)
 
-        for mapping, p_aut_size in positives:
-            assert is_paut(adjacency_dict, mapping)
-            assert is_extensible(group, mapping)
-
-            raw_examples.append(
-                RawPautExample(
-                    edge_index=tensor_edge_index,
-                    num_of_nodes=num_of_nodes,
-                    mapping=mapping,
-                    label=1,
-                    paut_stats=PautStats(p_aut_size, 1, dataset_type),
-                )
-            )
+        append_validated_examples(
+            raw_examples,
+            positives,
+            edge_index=tensor_edge_index,
+            num_of_nodes=num_of_nodes,
+            adjacency_dict=adjacency_dict,
+            group=group,
+            label=1,
+            dataset_type=dataset_type,
+        )
 
         negatives_pseudo = gen_pseudo_similar_examples(
             group, num_of_nodes, adjacency_dict, examples_num
@@ -421,29 +460,24 @@ def generate_raw_examples(
             group, examples_num, num_of_nodes, adjacency_dict
         )
 
-        negative_seen_keys: set[frozenset] = {
-            frozenset(mapping.items()) for mapping, _ in negatives_pseudo
+        negative_seen_keys: set[frozenset[tuple[int, int]]] = {
+            mapping_key(mapping) for mapping, _ in negatives_pseudo
         }
         negatives_blocking_filtered = [
-            t
-            for t in negatives_blocking
-            if frozenset(t[0].items()) not in negative_seen_keys
+            t for t in negatives_blocking if mapping_key(t[0]) not in negative_seen_keys
         ]
         negatives = (negatives_pseudo + negatives_blocking_filtered)[: len(positives)]
 
-        for mapping, p_aut_size in negatives:
-            assert is_paut(adjacency_dict, mapping)
-            assert not is_extensible(group, mapping)
-
-            raw_examples.append(
-                RawPautExample(
-                    edge_index=tensor_edge_index,
-                    num_of_nodes=num_of_nodes,
-                    mapping=mapping,
-                    label=0,
-                    paut_stats=PautStats(p_aut_size, 0, dataset_type),
-                )
-            )
+        append_validated_examples(
+            raw_examples,
+            negatives,
+            edge_index=tensor_edge_index,
+            num_of_nodes=num_of_nodes,
+            adjacency_dict=adjacency_dict,
+            group=group,
+            label=0,
+            dataset_type=dataset_type,
+        )
 
     return raw_examples
 
