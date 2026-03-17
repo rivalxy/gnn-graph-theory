@@ -2,7 +2,11 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 import torch
-from data_utils import (
+from pynauty import autgrp
+from sympy.combinatorics import Permutation, PermutationGroup
+from torch_geometric.data import Data
+
+from dataset.graph_utils import (
     AdjacencyDict,
     DatasetType,
     GraphData,
@@ -11,16 +15,13 @@ from data_utils import (
     is_extensible,
     is_paut,
 )
-from features import make_pyg_data
-from pynauty import autgrp
-from sampling import (
+from dataset.features import make_pyg_data
+from dataset.sampling import (
     gen_blocking_examples,
     gen_positive_examples,
     gen_pseudo_similar_examples,
     mapping_key,
 )
-from sympy.combinatorics import Permutation, PermutationGroup
-from torch_geometric.data import Data
 
 
 @dataclass
