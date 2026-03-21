@@ -5,7 +5,7 @@ import torch
 from torch_geometric.data import Data
 
 from dataset.graph_utils import DatasetType, PautStats
-from dataset.dataset_gen import main
+from dataset.generate import main 
 
 
 def test_main_smoke_with_mocked_io(monkeypatch, tmp_path: Path) -> None:
