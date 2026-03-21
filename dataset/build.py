@@ -6,6 +6,7 @@ from pynauty import autgrp
 from sympy.combinatorics import Permutation, PermutationGroup
 from torch_geometric.data import Data
 
+from dataset.features import make_pyg_data
 from dataset.graph_utils import (
     AdjacencyDict,
     DatasetType,
@@ -15,7 +16,6 @@ from dataset.graph_utils import (
     is_extensible,
     is_paut,
 )
-from dataset.features import make_pyg_data
 from dataset.sampling import (
     gen_blocking_examples,
     gen_positive_examples,
