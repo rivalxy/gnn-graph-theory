@@ -1,14 +1,15 @@
+from pytest import MonkeyPatch
 from pathlib import Path
 from typing import Any
 
 import torch
 from torch_geometric.data import Data
 
+from dataset.generate import main
 from dataset.graph_utils import DatasetType, PautStats
-from dataset.generate import main 
 
 
-def test_main_smoke_with_mocked_io(monkeypatch, tmp_path: Path) -> None:
+def test_main_smoke_with_mocked_io(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
 
     def fake_read_graphs_from_g6(_path: str) -> list[int]:
@@ -43,16 +44,16 @@ def test_main_smoke_with_mocked_io(monkeypatch, tmp_path: Path) -> None:
         csv_paths.append(path)
 
     monkeypatch.setattr(
-        "dataset.dataset_gen.read_graphs_from_g6", fake_read_graphs_from_g6
+        "dataset.generate.read_graphs_from_g6", fake_read_graphs_from_g6
     )
     monkeypatch.setattr(
-        "dataset.dataset_gen.generate_raw_examples", fake_generate_raw_examples
+        "dataset.generate.generate_raw_examples", fake_generate_raw_examples
     )
     monkeypatch.setattr(
-        "dataset.dataset_gen.raw_examples_to_pyg", fake_raw_examples_to_pyg
+        "dataset.generate.raw_examples_to_pyg", fake_raw_examples_to_pyg
     )
-    monkeypatch.setattr("dataset.dataset_gen.paut_sizes_to_csv", fake_paut_sizes_to_csv)
-    monkeypatch.setattr("dataset.dataset_gen.torch.save", fake_torch_save)
+    monkeypatch.setattr("dataset.generate.paut_sizes_to_csv", fake_paut_sizes_to_csv)
+    monkeypatch.setattr("dataset.generate.torch.save", fake_torch_save)
 
     main()
 

@@ -28,7 +28,7 @@ def test_raw_examples_to_pyg_converts_and_aggregates_stats() -> None:
 
     assert len(pyg_data) == 1
     assert pyg_data[0].num_nodes == 2
-    assert pyg_data[0].y.item() == 1.0
+    assert pyg_data[0].y == 1.0
     assert 2 in paut_sizes
     assert len(paut_sizes[2]) == 1
     assert paut_sizes[2][0].paut_size == 1
