@@ -164,8 +164,8 @@ def raw_examples_to_pyg(
                 example.edge_index,
                 example.num_of_nodes,
                 example.mapping,
-                label=example.label,
-                extra_features=extra_features,
+                example.label,
+                extra_features,
             )
         )
 
