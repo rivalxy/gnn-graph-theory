@@ -50,8 +50,9 @@ def test_make_pyg_data_baseline_features_encoding() -> None:
         extra_features=False,
     )
 
+    assert data.x is not None
     assert data.x.shape == (2, BASELINE_FEATURE_DIM)
-    assert data.y.item() == 1.0
+    assert data.y == 1.0
     assert data.x[0, FEATURE_NODE_ID].item() == 0.0
     assert data.x[1, FEATURE_NODE_ID].item() == 0.5
     assert data.x[0, FEATURE_TARGET_ID].item() == 0.5
@@ -67,5 +68,7 @@ def test_make_pyg_data_extra_features_shape() -> None:
         label=0,
         extra_features=True,
     )
+
+    assert data.x is not None
     assert data.x.shape == (2, EXTRA_FEATURE_DIM)
-    assert data.y.item() == 0.0
+    assert data.y == 0.0
