@@ -1,8 +1,5 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch_geometric
-import torch_geometric.data
 from torch_geometric.nn import GINConv, GPSConv, global_add_pool
 
 
@@ -52,58 +49,57 @@ class GIN(nn.Module):
 
 
 class GPS(nn.Module):
-    def __init__(
-        self,
-        input_dim: int,
-        hidden_dim: int,
-        num_layers: int,
-        dropout: float,
-        attn_dropout: float,
-        heads: int,
-    ):
+    def __init__(self, input_dim, hidden_dim, num_layers, dropout, num_heads, pe_dim):
+        """
+        GPSConv model with LaplacianPE.
+
+        pe_dim: number of Laplacian eigenvectors (fixed at PE_DIM=5).
+        """
         super().__init__()
-
         self.dropout = dropout
-        self.input_proj = nn.Linear(input_dim, hidden_dim)
+        self.pe_dim = pe_dim
 
+        # Projects the first pe_dim eigenvectors into hidden_dim
+        self.pe_encoder = nn.Linear(pe_dim, hidden_dim)
+
+        # Brings raw node features up to hidden_dim before GPS layers
+        self.input_encoder = nn.Linear(input_dim, hidden_dim)
+
+        # GPS layers: each wraps a local GINConv + global MultiheadAttention
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
-            gin = GINConv(
-                nn.Sequential(
-                    nn.Linear(hidden_dim, 2 * hidden_dim),
-                    nn.BatchNorm1d(2 * hidden_dim),
-                    nn.ReLU(),
-                    nn.Linear(2 * hidden_dim, hidden_dim),
-                )
+            gin_mlp = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
             )
-
             self.convs.append(
                 GPSConv(
                     channels=hidden_dim,
-                    conv=gin,
-                    heads=heads,
-                    dropout=attn_dropout,
+                    conv=GINConv(gin_mlp),
+                    heads=num_heads,
+                    dropout=dropout,
                     attn_type="multihead",
                 )
             )
 
         self.lin1 = nn.Linear(hidden_dim, hidden_dim)
-        self.batch_norm1 = nn.BatchNorm1d(hidden_dim)
         self.classifier = nn.Linear(hidden_dim, 1)
 
-    def forward(self, data: torch_geometric.data.Data):
+    def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        x = torch.cat([x, data.pe], dim=-1)
-        x = self.input_proj(x)
+        pe = data.laplacian_eigenvector_pe
+        x = self.input_encoder(x) + self.pe_encoder(pe)
 
+        # GPS layers with jumping-knowledge sum over layers
+        h_graph = 0
         for conv in self.convs:
             x = conv(x, edge_index, batch)
             x = F.dropout(x, self.dropout, training=self.training)
+            h_graph = h_graph + global_add_pool(x, batch)
 
-        x = global_add_pool(x, batch)
-
-        x = F.relu(self.batch_norm1(self.lin1(x)))
-        x = F.dropout(x, self.dropout, training=self.training)
-
-        return self.classifier(x).view(-1)
+        h = F.relu(self.lin1(h_graph))
+        h = F.dropout(h, self.dropout, training=self.training)
+        return self.classifier(h).view(-1)
