@@ -3,6 +3,7 @@ import random
 from collections import deque
 from dataclasses import dataclass
 from enum import StrEnum
+from collections.abc import Iterable
 from typing import TypeAlias, cast
 
 import networkx as nx
@@ -20,10 +21,10 @@ def build_orbit_map(group: PermutationGroup) -> OrbitMap:
     return {node: i for i, orbit in enumerate(group.orbits()) for node in orbit}
 
 
-def build_adjacency_dict(edge_list: list[Edge]) -> AdjacencyDict:
+def build_adjacency_dict(edge_list: Iterable[Edge]) -> AdjacencyDict:
     """Build an adjacency dictionary from a list of edges.
 
-    :param edge_list: List of edges as (u, v) tuples.
+    :param edge_list: Iterable of edges as (u, v) tuples.
     :returns: Dictionary mapping each node to its set of neighbors.
     """
     adjacency_dict: AdjacencyDict = {}
