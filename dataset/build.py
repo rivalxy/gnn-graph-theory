@@ -45,6 +45,8 @@ class DatasetConfiguration:
     val_paut_sizes: dict[int, list[PautStats]]
     train_output_path: str
     paut_sizes_output_path: str
+    val_dataset: list[Data]
+    test_dataset: list[Data]
 
 
 def build_edge_index(adjacency_dict: AdjacencyDict) -> torch.Tensor:
