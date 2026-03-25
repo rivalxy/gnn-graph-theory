@@ -19,7 +19,7 @@ from dataset.graph_utils import (
 
 
 def main() -> None:
-    positive_graphs = read_graphs_from_g6("all_graphs.g6")
+    positive_graphs = read_graphs_from_g6("dataset/all_graphs.g6")
 
     graphs_train, graphs_temp, idx_train, idx_temp = train_test_split(
         positive_graphs, range(len(positive_graphs)), test_size=0.2, random_state=42
@@ -33,7 +33,7 @@ def main() -> None:
         "val": list(idx_val),
         "test": list(idx_test),
     }
-    with open("splits.json", "w") as f:
+    with open("dataset/splits.json", "w") as f:
         json.dump(splits, f)
 
     val_test_max_examples = 10
@@ -67,14 +67,14 @@ def main() -> None:
     raw_train_20 = generate_raw_examples(graphs_train, DatasetType.TRAIN, 20)
     print(f"  train: {len(raw_train_20)}")
 
-    os.makedirs("baseline", exist_ok=True)
-    os.makedirs("7_features", exist_ok=True)
+    os.makedirs("dataset/baseline", exist_ok=True)
+    os.makedirs("dataset/7_features", exist_ok=True)
 
-    torch.save(val_dataset_baseline, "val_dataset.pt")
-    torch.save(test_dataset_baseline, "test_dataset.pt")
+    torch.save(val_dataset_baseline, "dataset/val_dataset.pt")
+    torch.save(test_dataset_baseline, "dataset/test_dataset.pt")
 
-    torch.save(val_dataset_7f, "7_features/val_dataset_7_features.pt")
-    torch.save(test_dataset_7f, "7_features/test_dataset_7_features.pt")
+    torch.save(val_dataset_7f, "dataset/7_features/val_dataset_7_features.pt")
+    torch.save(test_dataset_7f, "dataset/7_features/test_dataset_7_features.pt")
 
     configurations = [
         DatasetConfiguration(
@@ -82,8 +82,8 @@ def main() -> None:
             raw_train=raw_train_10,
             extra_features=False,
             val_paut_sizes=val_paut_sizes_baseline,
-            train_output_path="baseline/train_dataset_baseline.pt",
-            paut_sizes_output_path="baseline/paut_sizes_baseline.csv",
+            train_output_path="dataset/baseline/train_dataset_baseline.pt",
+            paut_sizes_output_path="dataset/baseline/paut_sizes_baseline.csv",
             val_dataset=val_dataset_baseline,
             test_dataset=test_dataset_baseline,
         ),
@@ -92,8 +92,8 @@ def main() -> None:
             raw_train=raw_train_10,
             extra_features=True,
             val_paut_sizes=val_paut_sizes_7f,
-            train_output_path="7_features/train_dataset_7_features.pt",
-            paut_sizes_output_path="7_features/paut_sizes_7_features.csv",
+            train_output_path="dataset/7_features/train_dataset_7_features.pt",
+            paut_sizes_output_path="dataset/7_features/paut_sizes_7_features.csv",
             val_dataset=val_dataset_7f,
             test_dataset=test_dataset_7f,
         ),
@@ -102,8 +102,8 @@ def main() -> None:
             raw_train=raw_train_20,
             extra_features=False,
             val_paut_sizes=val_paut_sizes_baseline,
-            train_output_path="train_dataset.pt",
-            paut_sizes_output_path="paut_sizes.csv",
+            train_output_path="dataset/train_dataset.pt",
+            paut_sizes_output_path="dataset/paut_sizes.csv",
             val_dataset=val_dataset_baseline,
             test_dataset=test_dataset_baseline,
         ),
