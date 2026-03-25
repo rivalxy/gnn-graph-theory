@@ -84,6 +84,8 @@ def main() -> None:
             val_paut_sizes=val_paut_sizes_baseline,
             train_output_path="baseline/train_dataset_baseline.pt",
             paut_sizes_output_path="baseline/paut_sizes_baseline.csv",
+            val_dataset=val_dataset_baseline,
+            test_dataset=test_dataset_baseline,
         ),
         DatasetConfiguration(
             name="7_features",
@@ -92,6 +94,8 @@ def main() -> None:
             val_paut_sizes=val_paut_sizes_7f,
             train_output_path="7_features/train_dataset_7_features.pt",
             paut_sizes_output_path="7_features/paut_sizes_7_features.csv",
+            val_dataset=val_dataset_7f,
+            test_dataset=test_dataset_7f,
         ),
         DatasetConfiguration(
             name="larger",
@@ -100,6 +104,8 @@ def main() -> None:
             val_paut_sizes=val_paut_sizes_baseline,
             train_output_path="train_dataset.pt",
             paut_sizes_output_path="paut_sizes.csv",
+            val_dataset=val_dataset_baseline,
+            test_dataset=test_dataset_baseline,
         ),
     ]
 
@@ -120,7 +126,7 @@ def main() -> None:
         paut_sizes_to_csv(paut_sizes, config.paut_sizes_output_path)
 
         print(
-            f"Generated {len(train_dataset)} train, {len(val_dataset_baseline)} val, {len(test_dataset_baseline)} test examples."
+            f"Generated {len(train_dataset)} train, {len(config.val_dataset)} val, {len(config.test_dataset)} test examples."
         )
 
 
