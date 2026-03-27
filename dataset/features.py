@@ -17,7 +17,7 @@ FEATURE_TRIANGLES = 5
 FEATURE_AVG_NEIGHBOR_DEGREE = 6
 
 
-def normalize(values: torch.Tensor) -> torch.Tensor:
+def normalize_positive_values(values: torch.Tensor) -> torch.Tensor:
     if values.numel() == 0:
         return values
 
@@ -38,7 +38,7 @@ def build_extra_feature_matrix(
     degrees = torch.tensor(
         [nx_graph.degree(node) for node in range(num_of_nodes)], dtype=torch.float
     )
-    x[:, FEATURE_DEGREE] = normalize(degrees)
+    x[:, FEATURE_DEGREE] = normalize_positive_values(degrees)
 
     clustering_coeffs = torch.tensor(
         [nx.clustering(nx_graph, node) for node in range(num_of_nodes)],
@@ -50,7 +50,7 @@ def build_extra_feature_matrix(
         [nx.triangles(nx_graph, node) for node in range(num_of_nodes)],
         dtype=torch.float,
     )
-    x[:, FEATURE_TRIANGLES] = normalize(triangle_counts)
+    x[:, FEATURE_TRIANGLES] = normalize_positive_values(triangle_counts)
 
     avg_neighbor_degrees = []
     for node in range(num_of_nodes):
@@ -63,7 +63,7 @@ def build_extra_feature_matrix(
             avg_degree = 0.0
         avg_neighbor_degrees.append(avg_degree)
 
-    x[:, FEATURE_AVG_NEIGHBOR_DEGREE] = normalize(
+    x[:, FEATURE_AVG_NEIGHBOR_DEGREE] = normalize_positive_values(
         torch.tensor(avg_neighbor_degrees, dtype=torch.float)
     )
     return x

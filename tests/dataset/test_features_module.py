@@ -8,25 +8,25 @@ from dataset.features import (
     FEATURE_TARGET_ID,
     build_extra_feature_matrix,
     make_pyg_data,
-    normalize,
+    normalize_positive_values,
 )
 
 
 def test_normalize_handles_empty_tensor() -> None:
     values = torch.tensor([], dtype=torch.float)
-    result = normalize(values)
+    result = normalize_positive_values(values)
     assert result.numel() == 0
 
 
 def test_normalize_keeps_non_positive_values() -> None:
     values = torch.tensor([0.0, -1.0, -3.0], dtype=torch.float)
-    result = normalize(values)
+    result = normalize_positive_values(values)
     assert torch.equal(result, values)
 
 
 def test_normalize_scales_by_max() -> None:
     values = torch.tensor([1.0, 2.0, 4.0], dtype=torch.float)
-    result = normalize(values)
+    result = normalize_positive_values(values)
     assert torch.allclose(result, torch.tensor([0.25, 0.5, 1.0]))
 
 
