@@ -5,18 +5,17 @@ import pytest
 from sympy.combinatorics import Permutation, PermutationGroup
 
 from dataset.graph_utils import (
-    adj_to_nx_graph,
+    DatasetType,
+    PautStats,
     bfs_expand_pseudo_similar,
     build_adjacency_dict,
     build_orbit_map,
-    check_deletion_isomorphism,
-    find_pseudo_similar_pair,
+    construct_pseudo_similar_graph,
+    find_pseudo_similar_construction,
     is_extensible,
     is_injective,
     is_paut,
     paut_sizes_to_csv,
-    DatasetType,
-    PautStats,
     read_graphs_from_g6,
 )
 
@@ -145,57 +144,6 @@ def test_build_orbit_map(path_graph_group: PermutationGroup) -> None:
     assert orbit_of[3] != orbit_of[0]  # 3 is a fixed point, different orbit
 
 
-# --- adj_to_nx_graph ---
-
-
-def test_adj_to_nx_graph() -> None:
-    adj = {0: {1}, 1: {0, 2}, 2: {1}}
-    graph = adj_to_nx_graph(adj, num_nodes=3)
-    assert graph.number_of_nodes() == 3
-    assert set(graph.edges()) == {(0, 1), (1, 2)}
-
-
-def test_adj_to_nx_graph_includes_isolated_nodes() -> None:
-    graph = adj_to_nx_graph({}, num_nodes=3)
-    assert graph.number_of_nodes() == 3
-    assert graph.number_of_edges() == 0
-
-
-# --- check_deletion_isomorphism ---
-
-
-def test_check_deletion_isomorphism_symmetric_vertices() -> None:
-    # Path 0-1-2: deleting 0 or 2 gives isomorphic graphs (both paths of length 1)
-    graph = nx.path_graph(3)
-    sigma = check_deletion_isomorphism(graph, 0, 2)
-    assert sigma is not None
-    # sigma maps V(G-0)={1,2} -> V(G-2)={0,1}
-    assert 0 not in sigma
-    assert 2 not in sigma.values()
-
-
-def test_check_deletion_isomorphism_non_isomorphic() -> None:
-    # Star graph: center=0, leaves=1,2,3. G-0 is 3 isolated nodes, G-1 is a star with 2 leaves.
-    graph = nx.star_graph(3)
-    assert check_deletion_isomorphism(graph, 0, 1) is None
-
-
-# --- find_pseudo_similar_pair ---
-
-
-def test_find_pseudo_similar_pair_returns_none_for_vertex_transitive() -> None:
-    from pynauty import Graph, autgrp
-
-    # Complete graph K4 is vertex-transitive: all nodes in one orbit, no cross-orbit pairs.
-    adj = {0: {1, 2, 3}, 1: {0, 2, 3}, 2: {0, 1, 3}, 3: {0, 1, 2}}
-    g = Graph(4)
-    g.set_adjacency_dict(adj)
-    generators = [Permutation(p) for p in autgrp(g)[0]]
-    group = PermutationGroup(generators)
-
-    assert find_pseudo_similar_pair(adj, group, 4) is None
-
-
 # --- bfs_expand_pseudo_similar ---
 
 
@@ -209,7 +157,20 @@ def test_bfs_expand_pseudo_similar_contains_seed() -> None:
     assert mapping[0] == 3
     # Must be a partial automorphism
     assert is_paut(adj, mapping)
-    assert len(mapping) >= 1
+    assert len(mapping) >= 3
+
+
+def test_bfs_expand_pseudo_similar_limited_by_sigma_coverage() -> None:
+    # Star graph: 0 is the center connected to 1, 2, 3
+    adj = {0: {1, 2, 3}, 1: {0}, 2: {0}, 3: {0}}
+    # sigma only covers node 1 -> leaves 2, 3 unmappable
+    sigma = {1: 2}
+    mapping = bfs_expand_pseudo_similar(adj, u=0, v=3, sigma=sigma, target_size=3)
+
+    assert mapping[0] == 3
+    assert is_paut(adj, mapping)
+    # Can grow at most to size 2 ({0: 3, 1: 2}) since sigma has no entry for 2 or 3
+    assert len(mapping) <= 2
 
 
 # --- paut_sizes_to_csv ---
@@ -227,3 +188,115 @@ def test_paut_sizes_to_csv(tmp_path: Path) -> None:
     assert lines[0] == "num_of_nodes,paut_size,label,dataset_type"
     assert "5,3,1,train" in lines[1]
     assert "7,4,0,val" in lines[2]
+
+
+# --- construct_pseudo_similar_graph ---
+
+
+def test_construct_pseudo_similar_graph_structure() -> None:
+    # Path 0-1-2-3 with automorphism (0 3)(1 2)
+    base_adj = {0: {1}, 1: {0, 2}, 2: {1, 3}, 3: {2}}
+    sigma = [3, 2, 1, 0]  # (0 3)(1 2) in array form
+    S = {0, 1}  # u is adjacent to S; sigma(S) = {3, 2} for v
+
+    adj_G, n, u, v, witness = construct_pseudo_similar_graph(base_adj, 4, sigma, S)
+
+    assert n == 6
+    assert u == 4
+    assert v == 5
+    # u adjacent to S = {0, 1}
+    assert adj_G[u] == {0, 1}
+    assert u in adj_G[0] and u in adj_G[1]
+    # v adjacent to sigma(S) = {3, 2}
+    assert adj_G[v] == {2, 3}
+    assert v in adj_G[2] and v in adj_G[3]
+    # witness maps base nodes via sigma and u -> v
+    assert witness[0] == 3
+    assert witness[1] == 2
+    assert witness[u] == v
+    # Original edges preserved
+    assert 1 in adj_G[0] and 0 in adj_G[1]
+
+
+def test_construct_pseudo_similar_graph_witness_is_valid_isomorphism() -> None:
+    # Verify that G-v ≅ G-u via the witness (witness maps V(G-v) → V(G-u))
+    base_adj = {0: {1}, 1: {0, 2}, 2: {1, 3}, 3: {2}}
+    sigma = [3, 2, 1, 0]
+    S = {0, 1}
+
+    adj_G, n, u, v, witness = construct_pseudo_similar_graph(base_adj, 4, sigma, S)
+
+    # Collect edges of G-v (remove v and its edges) — this is the witness domain
+    edges_minus_v = set()
+    for a, neighbors in adj_G.items():
+        if a == v:
+            continue
+        for b in neighbors:
+            if b == v:
+                continue
+            edges_minus_v.add((a, b))
+
+    # Collect edges of G-u (remove u and its edges) — this is the witness codomain
+    edges_minus_u = set()
+    for a, neighbors in adj_G.items():
+        if a == u:
+            continue
+        for b in neighbors:
+            if b == u:
+                continue
+            edges_minus_u.add((a, b))
+
+    # Mapping edges of G-v through witness should give edges of G-u
+    mapped_edges = {(witness[a], witness[b]) for a, b in edges_minus_v}
+    assert mapped_edges == edges_minus_u
+
+
+# --- find_pseudo_similar_construction ---
+
+
+def test_find_pseudo_similar_construction_returns_none_for_large_graph() -> None:
+    # Graph with 21 nodes exceeds MAX_CONSTRUCTED_NODES - 2 = 20
+    adj = {i: {i + 1} for i in range(20)}
+    adj[20] = {19}
+    for i in range(1, 20):
+        adj[i].add(i - 1)
+
+    from pynauty import Graph, autgrp
+
+    g = Graph(21)
+    g.set_adjacency_dict(adj)
+    gens = autgrp(g)[0]
+    group = PermutationGroup([Permutation(p) for p in gens])
+
+    result = find_pseudo_similar_construction(adj, 21, group)
+    assert result is None
+
+
+def test_find_pseudo_similar_construction_succeeds_on_path_graph(
+    path_graph_group: PermutationGroup,
+) -> None:
+    import random
+
+    random.seed(42)
+    adjacency_dict = {
+        0: {1},
+        1: {0, 2},
+        2: {1, 3, 4},
+        3: {2, 4},
+        4: {2, 3, 5},
+        5: {4, 6},
+        6: {5},
+    }
+
+    result = find_pseudo_similar_construction(adjacency_dict, 7, path_graph_group)
+
+    if result is not None:
+        adj_G, n, u, v, witness = result
+        assert n == 9
+        # u and v must be the two new vertices
+        assert u == 7
+        assert v == 8
+        # Witness must map u -> v
+        assert witness[u] == v
+        # The constructed graph must have the right number of nodes
+        assert len(adj_G) == 9

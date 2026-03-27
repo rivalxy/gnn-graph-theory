@@ -1,8 +1,8 @@
-from pytest import MonkeyPatch
 from pathlib import Path
 from typing import Any
 
 import torch
+from pytest import MonkeyPatch
 from torch_geometric.data import Data
 
 from dataset.generate import main
@@ -55,22 +55,23 @@ def test_main_smoke_with_mocked_io(monkeypatch: MonkeyPatch, tmp_path: Path) -> 
     monkeypatch.setattr("dataset.generate.paut_sizes_to_csv", fake_paut_sizes_to_csv)
     monkeypatch.setattr("dataset.generate.torch.save", fake_torch_save)
 
+    (tmp_path / "dataset").mkdir()
     main()
 
-    assert (tmp_path / "splits.json").exists()
+    assert (tmp_path / "dataset" / "splits.json").exists()
     assert len(saved_paths) == 7
-    assert "val_dataset.pt" in saved_paths
-    assert "test_dataset.pt" in saved_paths
-    assert "7_features/val_dataset_7_features.pt" in saved_paths
-    assert "7_features/test_dataset_7_features.pt" in saved_paths
-    assert "baseline/train_dataset_baseline.pt" in saved_paths
-    assert "7_features/train_dataset_7_features.pt" in saved_paths
-    assert "train_dataset.pt" in saved_paths
+    assert "dataset/val_dataset.pt" in saved_paths
+    assert "dataset/test_dataset.pt" in saved_paths
+    assert "dataset/7_features/val_dataset_7_features.pt" in saved_paths
+    assert "dataset/7_features/test_dataset_7_features.pt" in saved_paths
+    assert "dataset/baseline/train_dataset_baseline.pt" in saved_paths
+    assert "dataset/7_features/train_dataset_7_features.pt" in saved_paths
+    assert "dataset/train_dataset.pt" in saved_paths
 
     assert sorted(csv_paths) == sorted(
         [
-            "baseline/paut_sizes_baseline.csv",
-            "7_features/paut_sizes_7_features.csv",
-            "paut_sizes.csv",
+            "dataset/baseline/paut_sizes_baseline.csv",
+            "dataset/7_features/paut_sizes_7_features.csv",
+            "dataset/paut_sizes.csv",
         ]
     )
