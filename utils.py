@@ -4,16 +4,19 @@ from typing import Any
 import pandas as pd
 import pynauty
 import torch
+import torch.nn as nn
 import torch_geometric.data
 import torch_geometric.loader
 import torch_geometric.utils
 from sklearn import metrics
+from torch_geometric.transforms import AddLaplacianEigenvectorPE
 
 from dataset.graph_utils import build_adjacency_dict
-from models import GIN
+from models import GIN, GPS
 
 FEATURE_TARGET_ID = 1
 FEATURE_SOURCE_ID = 2
+PE_DIM = 5
 
 
 def paut_size_from_torch(torch_graph: torch_geometric.data.Data) -> int:
@@ -52,17 +55,37 @@ def evaluate_checkpoint(
     config = load_json(config_path)
 
     evaluation_dataset = torch.load(dataset_path, weights_only=False)
+
+    is_gps = "num_heads" in config
+    if is_gps:
+        pe_transform = AddLaplacianEigenvectorPE(
+            k=PE_DIM,
+            attr_name="laplacian_eigenvector_pe",
+            is_undirected=True,
+        )
+        evaluation_dataset = [pe_transform(data) for data in evaluation_dataset]
+
     evaluation_loader = torch_geometric.loader.DataLoader(
         evaluation_dataset, batch_size=config["batch_size"], shuffle=False
     )
 
     number_of_features = evaluation_dataset[0].num_node_features
-    evaluation_model = GIN(
-        number_of_features,
-        config["hidden_dim"],
-        config["num_layers"],
-        config["dropout"],
-    )
+    if is_gps:
+        evaluation_model: nn.Module = GPS(
+            number_of_features,
+            config["hidden_dim"],
+            config["num_layers"],
+            config["dropout"],
+            config["num_heads"],
+            PE_DIM,
+        )
+    else:
+        evaluation_model = GIN(
+            number_of_features,
+            config["hidden_dim"],
+            config["num_layers"],
+            config["dropout"],
+        )
     evaluation_model.load_state_dict(
         torch.load(checkpoint_path, map_location=torch.device("cpu"))
     )
@@ -90,7 +113,7 @@ def load_json(path: str) -> dict[str, Any]:
 
 
 def collect_prediction_records(
-    model: GIN, loader: torch_geometric.loader.DataLoader
+    model: nn.Module, loader: torch_geometric.loader.DataLoader
 ) -> tuple[list[dict[str, Any]], list[int], list[int]]:
     records: list[dict[str, Any]] = []
     true_labels: list[int] = []
