@@ -8,6 +8,7 @@ class GIN(nn.Module):
     GIN: "How Powerful are Graph Neural Networks?" (Xu et al., ICLR 2019)
     https://arxiv.org/abs/1810.00826
     """
+
     def __init__(self, input_dim, hidden_dim, num_layers, dropout):
         super().__init__()
         self.dropout = dropout
