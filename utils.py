@@ -10,7 +10,6 @@ import torch_geometric.data
 import torch_geometric.loader
 import torch_geometric.utils
 from sklearn import metrics
-from torch_geometric.transforms import AddLaplacianEigenvectorPE
 
 from dataset.graph_utils import build_adjacency_dict
 from models import GIN, GPS
@@ -96,13 +95,6 @@ def evaluate_checkpoint(
     )
 
     is_gps = "num_heads" in config
-    if is_gps:
-        pe_transform = AddLaplacianEigenvectorPE(
-            k=PE_DIM,
-            attr_name="laplacian_eigenvector_pe",
-            is_undirected=True,
-        )
-        evaluation_dataset = [pe_transform(data) for data in evaluation_dataset]
 
     evaluation_loader = torch_geometric.loader.DataLoader(
         evaluation_dataset, batch_size=config["batch_size"], shuffle=False
