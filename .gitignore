@@ -230,4 +230,7 @@ pyrightconfig.json
 # Dataset metadata caches (regenerated on first run)
 *_metadata_cache.json
 
+# Large dataset files (regenerated on first run)
+dataset/*with_pe.pt
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,python,visualstudiocode
