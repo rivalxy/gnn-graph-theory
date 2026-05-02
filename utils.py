@@ -17,6 +17,7 @@ from models import GIN, GPS
 FEATURE_TARGET_ID = 1
 FEATURE_SOURCE_ID = 2
 PE_DIM = 5
+ATTN_HEADS = 4
 
 
 def paut_size_from_torch(torch_graph: torch_geometric.data.Data) -> int:
@@ -107,7 +108,7 @@ def evaluate_checkpoint(
             config["hidden_dim"],
             config["num_layers"],
             config["dropout"],
-            config["num_heads"],
+            ATTN_HEADS,
             PE_DIM,
         )
     else:
