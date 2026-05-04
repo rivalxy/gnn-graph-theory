@@ -73,7 +73,9 @@ def main() -> None:
     val_dataset_baseline, val_paut_sizes_baseline = raw_examples_to_pyg(
         raw_val, extra_features=False
     )
-    test_dataset_baseline, _ = raw_examples_to_pyg(raw_test, extra_features=False)
+    test_dataset_baseline, test_paut_sizes = raw_examples_to_pyg(
+        raw_test, extra_features=False
+    )
 
     print("Encoding val/test (7_features)...")
     val_dataset_7f, val_paut_sizes_7f = raw_examples_to_pyg(
@@ -101,6 +103,8 @@ def main() -> None:
 
     torch.save(val_dataset_7f, "dataset/7_features/val_dataset_7_features.pt")
     torch.save(test_dataset_7f, "dataset/7_features/test_dataset_7_features.pt")
+
+    paut_sizes_to_csv(test_paut_sizes, "dataset/test_paut_sizes.csv")
 
     train_configurations = [
         TrainConfiguration(
