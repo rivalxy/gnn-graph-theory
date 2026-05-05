@@ -60,7 +60,7 @@ Two feature variants are available:
 * **baseline** — 3 node features: node ID, source mapping target, target mapping source
 * **7_features** — extends baseline with degree, clustering coefficient, triangle count, and average neighbor degree
 
-### GPS (General-Purpose Spectral)
+### GPS (General, Powerful, Scalable graph transformer)
 
 Combines local GINConv message passing with global multi-head attention. Requires Laplacian eigenvector PE (5-dim, produced by `pe_transform.py`). PE is projected to `hidden_dim` before being added to node features.
 
