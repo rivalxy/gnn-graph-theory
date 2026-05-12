@@ -70,6 +70,7 @@ def test_main_smoke_with_mocked_io(monkeypatch: MonkeyPatch, tmp_path: Path) -> 
 
     assert sorted(csv_paths) == sorted(
         [
+            "dataset/test_paut_sizes.csv",
             "dataset/baseline/paut_sizes_baseline.csv",
             "dataset/7_features/paut_sizes_7_features.csv",
             "dataset/paut_sizes.csv",
