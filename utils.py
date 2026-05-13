@@ -41,7 +41,7 @@ def paut_size_from_torch(torch_graph: torch_geometric.data.Data) -> int:
     return paut_size
 
 
-def aut_grp_size_from_torch(torch_graph: torch_geometric.data.Data) -> int:
+def aut_grp_order_from_torch(torch_graph: torch_geometric.data.Data) -> int:
     num_nodes = torch_graph.num_nodes
     nx_graph = torch_geometric.utils.to_networkx(torch_graph)
     pynauty_graph = pynauty.Graph(num_nodes, directed=False)
@@ -63,7 +63,7 @@ def regularity_check(graph: torch_geometric.data.Data) -> bool:
 def load_or_compute_dataset_metadata(
     dataset: list[torch_geometric.data.Data], dataset_path: str
 ) -> list[dict[str, Any]]:
-    """Compute per-graph metadata (aut_grp_size, regularity, etc.) with file caching.
+    """Compute per-graph metadata (aut_grp_order, regularity, etc.) with file caching.
 
     The cache is stored next to the dataset file as ``<name>_metadata_cache.json``.
     """
@@ -84,7 +84,7 @@ def load_or_compute_dataset_metadata(
                 "num_nodes": graph.num_nodes,
                 "regular": regularity_check(graph),
                 "paut_size": paut_size_from_torch(graph),
-                "aut_grp_size": aut_grp_size_from_torch(graph),
+                "aut_grp_order": aut_grp_order_from_torch(graph),
             }
         )
 
@@ -128,9 +128,7 @@ def evaluate_checkpoint(
             config["num_layers"],
             config["dropout"],
         )
-    evaluation_model.load_state_dict(
-        torch.load(checkpoint_path, map_location="cpu")
-    )
+    evaluation_model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
     evaluation_model.eval()
 
     records, true_labels, predictions = collect_prediction_records(
@@ -180,7 +178,7 @@ def collect_prediction_records(
                     "num_nodes": meta["num_nodes"],
                     "regular": meta["regular"],
                     "paut_size": meta["paut_size"],
-                    "aut_grp_size": meta["aut_grp_size"],
+                    "aut_grp_order": meta["aut_grp_order"],
                     "true_label": true_label,
                     "prediction": pred_label,
                     "pred_prob": float(probs[i].item()),
@@ -280,7 +278,7 @@ def plot_error_by_size(df, model_name):
 
 
 def analyze_feature_importance(df, model_name):
-    features = ["num_nodes", "paut_size", "aut_grp_size", "paut_relative_size"]
+    features = ["num_nodes", "paut_size", "aut_grp_order", "paut_relative_size"]
     X = df[features]
     y = df["error"]
 
@@ -388,7 +386,7 @@ def decode_mapping(graph):
 
 def error_by_aut_grp(df, edges):
     d = df.copy()
-    d["bucket"] = pd.cut(d["aut_grp_size"], bins=edges, include_lowest=True)
+    d["bucket"] = pd.cut(d["aut_grp_order"], bins=edges, include_lowest=True)
     return (
         d.groupby("bucket", observed=True)["error"]
         .agg(error_rate="mean", count="count")

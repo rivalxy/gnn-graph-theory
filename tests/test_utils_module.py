@@ -139,7 +139,7 @@ def sample_records() -> list[dict]:
             "num_nodes": 4,
             "regular": True,
             "paut_size": 2,
-            "aut_grp_size": 8,
+            "aut_grp_order": 8,
             "true_label": 1,
             "prediction": 1,
             "pred_prob": 0.9,
@@ -150,7 +150,7 @@ def sample_records() -> list[dict]:
             "num_nodes": 6,
             "regular": False,
             "paut_size": 3,
-            "aut_grp_size": 2,
+            "aut_grp_order": 2,
             "true_label": 0,
             "prediction": 1,
             "pred_prob": 0.7,
@@ -173,8 +173,8 @@ def test_build_predictions_df_paut_relative_size(sample_records) -> None:
 
 def test_build_predictions_df_error_flag(sample_records) -> None:
     df = build_predictions_df(sample_records)
-    assert df.loc[0, "error"] == 0   # correct prediction
-    assert df.loc[1, "error"] == 1   # wrong prediction
+    assert df.loc[0, "error"] == 0  # correct prediction
+    assert df.loc[1, "error"] == 1  # wrong prediction
 
 
 # ── error_by_aut_grp ──────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ def test_build_predictions_df_error_flag(sample_records) -> None:
 def test_error_by_aut_grp_buckets_correctly() -> None:
     df = pd.DataFrame(
         {
-            "aut_grp_size": [1, 2, 5, 10],
+            "aut_grp_order": [1, 2, 5, 10],
             "error": [0, 1, 0, 1],
         }
     )
@@ -194,11 +194,16 @@ def test_error_by_aut_grp_buckets_correctly() -> None:
     assert "error_rate" in result.columns
     assert "count" in result.columns
     assert len(result) == 2
-    assert result.loc[result["bucket"].astype(str).str.contains("3.0, 12"), "count"].iloc[0] == 2
+    assert (
+        result.loc[result["bucket"].astype(str).str.contains("3.0, 12"), "count"].iloc[
+            0
+        ]
+        == 2
+    )
 
 
 def test_error_by_aut_grp_does_not_mutate_input() -> None:
-    df = pd.DataFrame({"aut_grp_size": [1, 2], "error": [0, 1]})
+    df = pd.DataFrame({"aut_grp_order": [1, 2], "error": [0, 1]})
     original_cols = list(df.columns)
     error_by_aut_grp(df, [0, 2, 5])
     assert list(df.columns) == original_cols
@@ -253,12 +258,12 @@ def test_is_vertex_transitive_cycle_c4() -> None:
 
 
 def test_is_vertex_transitive_star_false() -> None:
-    G = nx.star_graph(3)   # K1,3: center + 3 leaves, not regular
+    G = nx.star_graph(3)  # K1,3: center + 3 leaves, not regular
     assert is_vertex_transitive(G) is False
 
 
 def test_is_vertex_transitive_path_p3_false() -> None:
-    G = nx.path_graph(3)   # degrees 1, 2, 1 — not regular
+    G = nx.path_graph(3)  # degrees 1, 2, 1 — not regular
     assert is_vertex_transitive(G) is False
 
 
