@@ -21,11 +21,10 @@ from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 
+from dataset.features import FEATURE_SOURCE_ID, FEATURE_TARGET_ID
 from dataset.graph_utils import build_adjacency_dict
 from models import GIN, GPS
 
-FEATURE_TARGET_ID = 1
-FEATURE_SOURCE_ID = 2
 PE_DIM = 5
 ATTN_HEADS = 4
 
@@ -48,7 +47,7 @@ def aut_grp_order_from_torch(torch_graph: torch_geometric.data.Data) -> int:
     adjacency_dict = build_adjacency_dict(nx_graph.edges())
     pynauty_graph.set_adjacency_dict(adjacency_dict)
     _, grpsize1, grpsize2, _, _ = pynauty.autgrp(pynauty_graph)
-    return grpsize1 * 10**grpsize2
+    return int(round(grpsize1 * 10**grpsize2))
 
 
 def regularity_check(graph: torch_geometric.data.Data) -> bool:

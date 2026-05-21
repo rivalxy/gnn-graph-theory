@@ -8,9 +8,8 @@ import pytest
 import torch
 from torch_geometric.data import Data
 
+from dataset.features import FEATURE_NODE_ID, FEATURE_SOURCE_ID, FEATURE_TARGET_ID
 from utils import (
-    FEATURE_SOURCE_ID,
-    FEATURE_TARGET_ID,
     build_predictions_df,
     can_map_vertex,
     compute_avg_mapping_distance,
@@ -23,9 +22,6 @@ from utils import (
     paut_size_from_torch,
     regularity_check,
 )
-
-FEATURE_NODE_ID = 0
-
 
 def make_graph(
     edge_list: list[tuple[int, int]],
