@@ -403,7 +403,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gnn-graph-theory"
+name = "gnn-p-aut-extension"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
