@@ -143,7 +143,6 @@ def test_build_orbit_map(path_graph_group: PermutationGroup) -> None:
 
 
 # --- bfs_expand_pseudo_similar ---
-# TODO
 
 
 def test_bfs_expand_pseudo_similar_contains_seed() -> None:
@@ -201,7 +200,6 @@ def test_paut_sizes_to_csv(tmp_path: Path) -> None:
 
 
 # --- construct_pseudo_similar_graph ---
-# TODO
 
 
 def test_construct_pseudo_similar_graph_structure() -> None:
@@ -263,7 +261,6 @@ def test_construct_pseudo_similar_graph_witness_is_valid_isomorphism() -> None:
 
 
 # --- find_pseudo_similar_construction ---
-# TODO
 
 
 def test_find_pseudo_similar_construction_returns_none_for_large_graph() -> None:

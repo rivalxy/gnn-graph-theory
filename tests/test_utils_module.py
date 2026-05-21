@@ -263,6 +263,13 @@ def test_is_vertex_transitive_path_p3_false() -> None:
     assert is_vertex_transitive(G) is False
 
 
+def test_is_vertex_transitive_regular_not_transitive() -> None:
+    # C4 ∪ C6: 2-regular so the degree filter passes, but no automorphism maps a
+    # C4 node to a C6 node (different component sizes) — exercises can_map_vertex
+    G = nx.disjoint_union(nx.cycle_graph(4), nx.cycle_graph(6))
+    assert is_vertex_transitive(G) is False
+
+
 # ── has_degree_mismatch ───────────────────────────────────────────────────────
 
 
