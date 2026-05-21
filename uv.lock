@@ -415,8 +415,8 @@ dependencies = [
     { name = "optuna" },
     { name = "pandas" },
     { name = "pynauty" },
-    { name = "pytest" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "seaborn" },
     { name = "statsmodels" },
     { name = "sympy" },
@@ -427,6 +427,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "pyright" },
+    { name = "pytest" },
 ]
 
 [package.metadata]
@@ -439,8 +440,8 @@ requires-dist = [
     { name = "optuna", specifier = ">=4.8.0" },
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "pynauty", specifier = ">=2.8.8.1" },
-    { name = "pytest", specifier = ">=9.0.2" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
+    { name = "scipy", specifier = ">=1.17.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "sympy", specifier = ">=1.14.0" },
@@ -449,7 +450,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pyright", specifier = ">=1.1.409" }]
+dev = [
+    { name = "pyright", specifier = ">=1.1.409" },
+    { name = "pytest", specifier = ">=9.0.3" },
+]
 
 [[package]]
 name = "greenlet"
