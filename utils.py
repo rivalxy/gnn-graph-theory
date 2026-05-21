@@ -247,7 +247,7 @@ def plot_error_by_size(df, model_name):
         .reset_index()
     )
 
-    fig, ax1 = plt.subplots(figsize=(10, 5))
+    _, ax1 = plt.subplots(figsize=(10, 5))
     plot_data = error_rate_by_nodes.copy()
     plot_data["num_nodes"] = plot_data["num_nodes"].astype(str)
 
@@ -338,7 +338,7 @@ def plot_error_by_paut_relative_size(df, model_name, ylim=(0, 0.4)):
     corr, pvalue = spearmanr(df["paut_relative_size"], df["error"])
     print(f"Spearman r = {corr:.3f}, p = {pvalue:.4f}")
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    _, ax = plt.subplots(figsize=(10, 5))
     sns.lineplot(
         data=error_rate,
         x="bin_midpoint",
