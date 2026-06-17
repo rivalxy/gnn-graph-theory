@@ -23,7 +23,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 from dataset.features import FEATURE_SOURCE_ID, FEATURE_TARGET_ID
 from dataset.graph_utils import build_adjacency_dict
-from models import GIN, GPS
+from models import GIN, GINLapPE, GPS
 
 PE_DIM = 5
 ATTN_HEADS = 4
@@ -105,6 +105,7 @@ def evaluate_checkpoint(
     )
 
     is_gps = "num_heads" in config
+    has_pe = hasattr(evaluation_dataset[0], "laplacian_eigenvector_pe")
 
     evaluation_loader = torch_geometric.loader.DataLoader(
         evaluation_dataset, batch_size=config["batch_size"], shuffle=False
@@ -118,6 +119,14 @@ def evaluate_checkpoint(
             config["num_layers"],
             config["dropout"],
             ATTN_HEADS,
+            PE_DIM,
+        )
+    elif has_pe:
+        evaluation_model = GINLapPE(
+            number_of_features,
+            config["hidden_dim"],
+            config["num_layers"],
+            config["dropout"],
             PE_DIM,
         )
     else:

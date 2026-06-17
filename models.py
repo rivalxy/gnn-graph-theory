@@ -49,6 +49,54 @@ class GIN(nn.Module):
         return self.classifier(h).view(-1)
 
 
+class GINLapPE(nn.Module):
+    """
+    GIN with Laplacian Positional Encoding (LapPE).
+
+    LapPE is injected at the input by summing a learned projection of the
+    Laplacian eigenvectors with the encoded node features before the GIN
+    layers, following the GPS paper convention but without global attention.
+    """
+
+    def __init__(self, input_dim, hidden_dim, num_layers, dropout, pe_dim):
+        super().__init__()
+        self.dropout = dropout
+
+        self.input_encoder = nn.Linear(input_dim, hidden_dim)
+        self.pe_encoder = nn.Linear(pe_dim, hidden_dim)
+
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
+        for _ in range(num_layers):
+            mlp = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+            )
+            self.convs.append(GINConv(mlp))
+            self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
+
+        self.lin1 = nn.Linear(hidden_dim, hidden_dim)
+        self.classifier = nn.Linear(hidden_dim, 1)
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        pe = data.laplacian_eigenvector_pe
+
+        x = self.input_encoder(x) + self.pe_encoder(pe)
+
+        h_graph = 0
+        for conv, batch_norm in zip(self.convs, self.batch_norms):
+            x = F.relu(batch_norm(conv(x, edge_index)))
+            x = F.dropout(x, self.dropout, training=self.training)
+            h_graph = h_graph + global_add_pool(x, batch)
+
+        h = F.relu(self.lin1(h_graph))
+        h = F.dropout(h, self.dropout, training=self.training)
+        return self.classifier(h).view(-1)
+
+
 class GPS(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, dropout, num_heads, pe_dim):
         """
