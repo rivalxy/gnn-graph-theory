@@ -23,6 +23,7 @@ from utils import (
     regularity_check,
 )
 
+
 def make_graph(
     edge_list: list[tuple[int, int]],
     num_nodes: int,
