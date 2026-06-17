@@ -66,7 +66,7 @@ Combines local GINConv message passing with global multi-head attention. Require
 
 ## Training
 
-Training is done via Kaggle notebooks located in `/kaggle/` (subdirectories: `baseline/`, `7_features/`, `gps/`). Hyperparameter search is performed with Optuna; best configs and trained weights are saved to `/results/`.
+Training is done via Kaggle notebooks located in `/kaggle/` (subdirectories: `baseline/`, `7_features/`, `gin_lappe/`, `gps/`). Hyperparameter search is performed with Optuna; best configs and trained weights are saved to `/results/`.
 
 ## Evaluation
 
