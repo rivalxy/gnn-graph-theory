@@ -10,17 +10,17 @@ Given a graph and one of its partial automorphisms (encoded as node features), t
 
 ## Results
 
-Averaged over 5 random seeds on the held-out test split (6,670 examples):
+Evaluated on the held-out test split (6,670 examples):
 
-| Model | Features | Val Accuracy | Val F1 |
+| Model | Features | Test Accuracy | Test F1 |
 | --- | --- | --- | --- |
-| GIN | 3 (baseline) | 79.8% ± 0.0% | 81.5% ± 0.1% |
-| GIN | 3 (baseline, 2× data) | 80.5% ± 0.3% | 82.2% ± 0.3% |
-| GIN | 7 (+ structural) | 79.2% ± 0.2% | 81.0% ± 0.6% |
-| **GIN + LapPE** | **7 (+ structural)** | **97.8% ± 0.3%** | **97.9% ± 0.3%** |
-| GPS | 7 (+ structural) | 97.8% ± 0.3% | 97.9% ± 0.3% |
+| GIN | 3 (baseline, smaller dataset) | 78.7% | 80.3% |
+| GIN | 3 (baseline, larger dataset) | 80.5% | 82.0% |
+| GIN | 7 (+ structural) | 79.4% | 81.2% |
+| GIN + LapPE | 7 (+ structural) | 78.4% | 80.1% |
+| **GPS** | **7 (+ structural)** | **97.8%** | **97.8%** |
 
-Adding Laplacian positional encodings (LapPE) produces a jump from ~80% to ~98% accuracy, suggesting that explicit position information — not just local message passing — is key to learning automorphism extensibility.
+All GIN variants plateau around 79–80% regardless of features or positional encodings. GPS — which adds global multi-head attention on top of local message passing — jumps to ~98%, suggesting that reasoning about automorphism extensibility requires global graph structure that purely local architectures cannot capture.
 
 ## Architecture
 
