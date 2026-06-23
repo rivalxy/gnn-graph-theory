@@ -1,78 +1,135 @@
-# Bachelor Thesis: Graph neural networks and extensibility of partial graph automorphisms
+# GNN Extensibility of Partial Graph Automorphisms
 
-This repository contains the code, experiments, and validation statistics for my bachelor thesis, which focuses on training a Graph Neural Network (GNN) to determine whether a partial automorphism of a graph can be extended to a full automorphism.
+Can a graph neural network learn whether a partial automorphism extends to a full one? This repository contains the experiments for my bachelor thesis, which investigates this question using GIN and GPS architectures on a dataset of highly symmetric graphs.
 
-## Overview
+## Problem
 
-The project uses a dataset of graphs with high automorphism group sizes, generates partial automorphisms, and trains a GNN classifier to predict extendibility. The goal is to explore the learnability of graph symmetries and the structural patterns that guide automorphism extension.
+A **partial automorphism** of a graph $G$ is an isomorphism between two induced subgraphs. It is **extensible** if it can be completed into a full automorphism $G \to G$.
+
+Given a graph and one of its partial automorphisms (encoded as node features), the task is binary classification: extensible (1) or not (0). This is a non-trivial structural question — checking extensibility requires reasoning about the global symmetry group of the graph.
+
+## Results
+
+Averaged over 5 random seeds on the held-out test split (6,670 examples):
+
+| Model | Features | Val Accuracy | Val F1 |
+| --- | --- | --- | --- |
+| GIN | 3 (baseline) | 79.8% ± 0.0% | 81.5% ± 0.1% |
+| GIN | 3 (baseline, 2× data) | 80.5% ± 0.3% | 82.2% ± 0.3% |
+| GIN | 7 (+ structural) | 79.2% ± 0.2% | 81.0% ± 0.6% |
+| **GIN + LapPE** | **7 (+ structural)** | **97.8% ± 0.3%** | **97.9% ± 0.3%** |
+| GPS | 7 (+ structural) | 97.8% ± 0.3% | 97.9% ± 0.3% |
+
+Adding Laplacian positional encodings (LapPE) produces a jump from ~80% to ~98% accuracy, suggesting that explicit position information — not just local message passing — is key to learning automorphism extensibility.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A["Graph G + partial automorphism φ\n(encoded as node features)"]
+    A --> B["Node feature encoder\n(Linear: d_in → hidden_dim)"]
+
+    B --> E["+ LapPE encoder\n(Linear: pe_dim=5 → hidden_dim)\nGIN+LapPE and GPS only"]
+
+    E --> F["GINConv layers × N\n(MLP + BatchNorm + ReLU)"]
+
+    F --> G["Jumping knowledge readout\nglobal_add_pool, summed over all layers"]
+    G --> H["MLP classifier\n(Linear → ReLU → Linear)"]
+    H --> I["Extensible? 0 / 1"]
+
+    subgraph GPS ["GPS variant: each layer wraps GINConv + global attention"]
+        J["Multi-head attention\n(num_heads=4)"]
+    end
+
+    F -.->|"GPS replaces GINConv\nwith GPSConv"| J
+```
+
+### Node features
+
+Each node carries features that encode its role in the partial automorphism:
+
+| Index | Feature | Description |
+| --- | --- | --- |
+| 0 | `node_id` | Normalized node index |
+| 1 | `target_id` | If node is in domain of φ: normalized index of its image; else −1 |
+| 2 | `source_id` | If node is in codomain of φ: normalized index of its preimage; else −1 |
+| 3 | `degree` | Normalized degree *(7-feature variant only)* |
+| 4 | `clustering` | Clustering coefficient *(7-feature variant only)* |
+| 5 | `triangles` | Normalized triangle count *(7-feature variant only)* |
+| 6 | `avg_neighbor_degree` | Normalized average neighbor degree *(7-feature variant only)* |
 
 ## Repository Structure
 
-* **`models.py`** - GNN model definitions (GIN and GPS architectures)
-* **`utils.py`** - Training helpers, evaluation, and metadata utilities
-* **`/dataset/`** - Graph datasets, generation scripts, and dataset statistics notebook
-* **`/kaggle/`** - Notebooks used for training on kaggle.com (baseline, 7_features, gps variants)
-* **`/results/`** - Optuna search history, training history, and best model weights (`.pt` files)
-* **`/tests/`** - Unit tests (pytest)
+```text
+gnn-p-aut-extension/
+├── models.py              # GIN, GIN+LapPE, GPS model definitions
+├── utils.py               # Training loop, evaluation, metadata utilities
+├── evaluate.ipynb         # Compare all models: accuracy, F1, training curves
+├── analysis.ipynb         # Confusion matrices, breakdown by graph properties
+├── dataset/
+│   ├── all_graphs.g6      # 4,985 source graphs (graph6 format)
+│   ├── generate.py        # Build train/val/test .pt files from source graphs
+│   ├── pe_transform.py    # Add LapPE to existing .pt files (GPS/GIN+LapPE)
+│   ├── features.py        # Node feature construction
+│   ├── build.py           # Partial automorphism example generation
+│   ├── sampling.py        # Partial automorphism sampling
+│   ├── graph_utils.py     # Graph I/O and automorphism utilities
+│   └── dataset_stats.ipynb
+├── kaggle/                # Training notebooks (baseline/, 7_features/, gin_lappe/, gps/)
+├── results/               # Optuna trials, best configs, trained weights (.pt)
+└── tests/                 # pytest unit tests
+```
+
+## Dataset
+
+- **Source graphs:** 4,985 graphs with large automorphism groups (generated with nauty/geng, stored in graph6 format)
+- **Split:** 80 / 10 / 10 (train / val / test) by graph
+- **Examples:** 82,184 train / 6,732 val / 6,670 test (partial automorphism instances with labels)
+- **Label balance:** ~1.15:1 (extensible : non-extensible)
+
+Each example pairs a graph with one sampled partial automorphism. The label is 1 if some full automorphism of $G$ agrees with φ on its domain.
 
 ## Installation
 
-This project uses [uv](https://github.com/astral-sh/uv) and requires Python 3.13.
+Requires Python 3.13 and [uv](https://github.com/astral-sh/uv).
 
 ```bash
+git clone https://github.com/rivalxy/gnn-p-aut-extension
+cd gnn-p-aut-extension
 uv sync
 ```
 
-Or install dependencies manually with pip using `pyproject.toml`.
+**Manual install (pip):** Key dependencies are `torch`, `torch-geometric`, `pynauty`, `networkx`, `optuna`, `scikit-learn`, `matplotlib`. See `pyproject.toml` for the full list.
 
-Key dependencies: `torch`, `torch-geometric`, `pynauty`, `networkx`, `optuna`, `scikit-learn`, `matplotlib`.
+## Reproducing Results
 
-## Setup
-
-### 1. Generate datasets
-
-If the dataset `.pt` files are not present, generate them from the source graphs:
+### 1. Generate the dataset
 
 ```bash
 python dataset/generate.py
 ```
 
-This reads `dataset/all_graphs.g6`, splits graphs into train/val/test (80/10/10), generates partial automorphism examples with extendibility labels, and saves `dataset/{train,val,test}_dataset.pt`.
+Reads `dataset/all_graphs.g6`, saves train/val/test `.pt` files and `dataset/splits.json`. Runtime: a few minutes on a laptop.
 
-### 2. Add positional encodings (GPS models only)
-
-Before training or evaluating GPS-based models, generate the Laplacian eigenvector positional encodings. The pre-transformed files are excluded from the repository due to their large size.
+### 2. Add positional encodings (GIN+LapPE and GPS only)
 
 ```bash
 python dataset/pe_transform.py
 ```
 
-This reads `dataset/{train,val,test}_dataset.pt`, adds Laplacian eigenvector PE (dim=5), and saves `dataset/{train,val,test}_dataset_with_pe.pt`.
+Adds 5-dimensional Laplacian eigenvector PE and saves `*_with_pe.pt` files. These are excluded from the repo due to size.
 
-## Models
+### 3. Train
 
-### GIN (Graph Isomorphism Network)
+Training is implemented as Kaggle notebooks in `kaggle/` (one subdirectory per model variant). Each runs Optuna hyperparameter search followed by a 5-seed final evaluation. Pre-trained weights and best hyperparameter configs are saved in `results/`.
 
-Based on [Xu et al., ICLR 2019](https://arxiv.org/abs/1810.00826). Uses an MLP with batch normalization between layers and a jumping-knowledge readout over all layers. Does not require positional encodings.
+### 4. Evaluate
 
-Two feature variants are available:
+```bash
+jupyter notebook evaluate.ipynb
+```
 
-* **baseline** — 3 node features: node ID, source mapping target, target mapping source
-* **7_features** — extends baseline with degree, clustering coefficient, triangle count, and average neighbor degree
-
-### GPS (General, Powerful, Scalable graph transformer)
-
-Combines local GINConv message passing with global multi-head attention. Requires Laplacian eigenvector PE (5-dim, produced by `pe_transform.py`). PE is projected to `hidden_dim` before being added to node features.
-
-## Training
-
-Training is done via Kaggle notebooks located in `/kaggle/` (subdirectories: `baseline/`, `7_features/`, `gin_lappe/`, `gps/`). Hyperparameter search is performed with Optuna; best configs and trained weights are saved to `/results/`.
-
-## Evaluation
-
-Open and run `evaluate.ipynb` to compare trained models. It loads checkpoints from `/results/`, plots training curves, and reports accuracy and F1 scores on the test set.
-
-For deeper analysis (confusion matrices, feature importance, breakdown by graph properties), use `analysis.ipynb`.
+Loads checkpoints from `results/`, plots training curves, and reports accuracy and F1. For confusion matrices and per-graph-property breakdowns, use `analysis.ipynb`.
 
 ## Testing
 
@@ -80,6 +137,8 @@ For deeper analysis (confusion matrices, feature importance, breakdown by graph 
 pytest
 ```
 
-## Thesis Context
+## References
 
-The goal is to investigate potential applications of graph neural networks (GNNs) to problems in algebraic graph theory. The student will have the opportunity to engage with the state-of-art research in machine learning and algebraic graph theory and contribute to the field by training GNNs to predict algebraic properties.
+- Xu et al., [*How Powerful are Graph Neural Networks?*](https://arxiv.org/abs/1810.00826) (ICLR 2019) — GIN
+- Rampášek et al., [*Recipe for a General, Powerful, Scalable Graph Transformer*](https://arxiv.org/abs/2205.12454) (NeurIPS 2022) — GPS
+- McKay & Piperno, [*Practical graph isomorphism, II*](https://doi.org/10.1016/j.jsc.2013.09.003) (2014) — nauty (used for automorphism computation and graph generation)
